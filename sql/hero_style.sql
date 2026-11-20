@@ -5,6 +5,11 @@
 -- 按 7.42 环境整理：开局每分钟固定给经验、建筑和击杀赏金降低、痛苦魔方 15:00 刷新，
 -- 整体节奏更偏向早打架、抢地图目标，所以"打架"标签给得比较多。
 --
+-- 标签含义（"打架"按用户的定义）：
+--   打架：数值撑得起前期高强度打架，不靠刷钱也能参团。典型是小骷髅：两个吃兵、隐身找人，
+--         刷得不快，所以是打架核；美杜莎这种靠后期装备的不算
+--   发育：要时间刷钱，装备成型后才发力
+--
 -- 每个英雄 1~2 个标签，逗号分隔，第一个是主要打法。按 slug 对应 hero 表，
 -- 和 heroes_full.sql 互不影响（重新生成英雄数据不会冲掉这里）。
 --
@@ -28,7 +33,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('earthshaker', '打架,抓人'),
 ('juggernaut', '发育,带线'),
 ('mirana', '抓人'),
-('nevermore', '打架,发育'),
+('nevermore', '发育,打架'),
 ('morphling', '发育,带线'),
 ('phantom_lancer', '发育,带线'),
 ('puck', '打架,抓人'),
@@ -36,7 +41,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('razor', '打架,推进'),
 ('sand_king', '打架'),
 ('storm_spirit', '抓人,打架'),
-('sven', '打架,发育'),
+('sven', '发育,打架'),
 ('tiny', '打架,抓人'),
 ('vengefulspirit', '打架,保人'),
 ('windrunner', '打架,抓人'),
@@ -58,7 +63,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('beastmaster', '推进,抓人'),
 ('queenofpain', '抓人,打架'),
 ('venomancer', '推进,打架'),
-('faceless_void', '打架,发育'),
+('faceless_void', '发育,打架'),
 ('skeleton_king', '打架,推进'),
 ('death_prophet', '推进,打架'),
 ('phantom_assassin', '发育,抓人'),
@@ -73,7 +78,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('furion', '带线,推进'),
 ('life_stealer', '打架'),
 ('dark_seer', '打架,发育'),
-('clinkz', '抓人,推进'),
+('clinkz', '打架,抓人'),
 ('omniknight', '保人,打架'),
 ('enchantress', '推进,保人'),
 ('huskar', '打架'),
@@ -84,14 +89,14 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('jakiro', '推进,打架'),
 ('batrider', '抓人,打架'),
 ('chen', '推进,保人'),
-('spectre', '发育,打架'),
+('spectre', '发育'),
 ('doom_bringer', '打架,发育'),
 ('ancient_apparition', '打架'),
 ('ursa', '打架,抓人'),
 ('spirit_breaker', '抓人'),
 ('gyrocopter', '打架,发育'),
 ('alchemist', '发育,推进'),
-('invoker', '打架'),
+('invoker', '打架,带线'),
 ('silencer', '打架'),
 ('obsidian_destroyer', '打架'),
 ('lycan', '推进,带线'),
@@ -111,7 +116,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('wisp', '保人'),
 ('visage', '推进,抓人'),
 ('slark', '抓人,发育'),
-('medusa', '发育,打架'),
+('medusa', '发育,带线'),
 ('troll_warlord', '推进,打架'),
 ('centaur', '打架'),
 ('magnataur', '打架'),
