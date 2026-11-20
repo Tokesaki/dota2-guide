@@ -43,7 +43,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('storm_spirit', '抓人,打架'),
 ('sven', '发育,打架'),
 ('tiny', '打架,抓人'),
-('vengefulspirit', '打架,保人'),
+('vengefulspirit', '打架,发育'),
 ('windrunner', '打架,抓人'),
 ('zuus', '打架'),
 ('kunkka', '打架'),
