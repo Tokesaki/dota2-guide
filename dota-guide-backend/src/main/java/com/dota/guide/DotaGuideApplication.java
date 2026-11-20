@@ -23,8 +23,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class DotaGuideApplication {
 
     public static void main(String[] args) {
-        // 带 --desktop 参数启动 = 本地软件模式（见 application-desktop.yml 和 desktop 包）
-        if (java.util.Arrays.asList(args).contains("--desktop")) {
+        // 本地软件模式（见 application-desktop.yml 和 desktop 包）：
+        //   - 打包好的 exe 通过 JVM 参数 -Ddesktop.mode=true 打开（写在 jpackage 的 --java-options 里）。
+        //     不用程序参数传，是因为 jpackage 的启动器只要用户另外带了参数，就会把默认参数整个换掉，
+        //     比如双击时带上 --review.meta.enabled=false 就会丢掉 --desktop，退回去连 MySQL；
+        //   - 开发时用 java -jar xxx.jar --desktop 也可以。
+        if (Boolean.getBoolean("desktop.mode") || java.util.Arrays.asList(args).contains("--desktop")) {
             com.dota.guide.desktop.DesktopLauncher.launch(DotaGuideApplication.class, args);
             return;
         }

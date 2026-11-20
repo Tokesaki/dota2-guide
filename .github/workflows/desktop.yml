@@ -67,8 +67,8 @@ jobs:
           cp dota-guide-backend/target/dota-guide-backend-*.jar build/in/app.jar
           jpackage --type app-image --name Dota2Review --app-version 1.0.0 \
             --vendor "dota2-guide" \
-            --input build/in --main-jar app.jar --arguments --desktop \
-            --java-options "-Xmx512m" \
+            --input build/in --main-jar app.jar \
+            --java-options "-Xmx512m -Ddesktop.mode=true" \
             --dest dist-desktop \
             --add-modules java.base,java.desktop,java.sql,java.naming,java.management,java.instrument,java.logging,java.xml,java.net.http,java.scripting,java.security.jgss,java.compiler,jdk.unsupported,jdk.crypto.ec,jdk.zipfs,jdk.localedata,jdk.charsets \
             --jlink-options "--strip-debug --no-man-pages --no-header-files --compress=zip-6"
