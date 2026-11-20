@@ -58,13 +58,18 @@ review:
     api-key: ${OPENDOTA_API_KEY:}
     # 两次请求之间至少间隔多少毫秒（免费额度每分钟 60 次，1100 刚好不超）
     min-interval-ms: 1100
+  # 当前游戏版本：高分局样本和职业比赛出装都只统计这个时间之后的比赛。
+  # 出新版本时改这两项（start 是更新当天的 Unix 秒，北京时间 2026-11-18 16:00 = 1794988800）
+  patch:
+    name: "7.42"
+    start: 1794988800
   meta:
     # 是否定时采集高分局出装样本
     enabled: true
     # 高分局的段位门槛：OpenDota rank_tier，80 = 冠绝一世
     min-rank: 80
-    # 每轮最多拉几场比赛详情
-    matches-per-run: 15
+    # 每轮最多拉几场比赛详情（每轮 1 + 25 次请求，一天约 620 次，复盘页还剩足够额度）
+    matches-per-run: 25
     # 每轮间隔（毫秒），默认 1 小时；启动后 1 分钟跑第一轮
     interval-ms: 3600000
     initial-delay-ms: 60000

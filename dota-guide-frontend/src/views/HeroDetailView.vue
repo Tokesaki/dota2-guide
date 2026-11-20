@@ -14,7 +14,7 @@ import { useRouter } from 'vue-router'
 import { getHeroDetail } from '../api/hero'
 import HeroBuildsPanel from '../components/HeroBuildsPanel.vue'
 // lucide 图标：全站 emoji 统一换成 SVG 图标库
-import { Target, BookOpen, Swords, Gem, ClipboardList, Scale, CircleX, ArrowLeft } from 'lucide-vue-next'
+import { Target, BookOpen, Swords, Gem, ClipboardList, Scale, CircleX, ArrowLeft, PlayCircle } from 'lucide-vue-next'
 // 全站共享常量：更新日期四页统一取这里
 import { UPDATE_DATE } from '../constants'
 // 值 → 界面标识的映射（主属性色 token、技能徽章、技能色条类名）
@@ -22,7 +22,7 @@ import { attrToken, categoryBadge, skillBarClass } from '../domain/vocab'
 // 技能的领域谓词（算不算"强化类"、算不算"先天"）
 import { isUpgradeSkill, isInnate } from '../domain/skill'
 // 英雄字段的展示换算（定位拆分 / 难度星 / 号位进度条）
-import { splitRoles, complexityStars, posFillPercent } from '../domain/hero'
+import { splitRoles, complexityStars, posFillPercent, splitStyles, STYLE_HINTS, youtubeSearchUrl } from '../domain/hero'
 
 // router/index.js 里配了一个 props 函数，把 URL 里的 :key 改名成 heroKey 传进来：
 //   访问 /heroes/sven 这里 heroKey 是 "sven"（站内链接都用 slug）
@@ -54,6 +54,10 @@ const upgradeSkills = computed(() => (hero.value?.skills || []).filter(isUpgrade
 // 官网定位（role 字段）是顿号分隔的多个标签（如"核心、控制、肉盾、先手"），
 // 拆成数组后逐个渲染成小徽章
 const roleList = computed(() => splitRoles(hero.value?.role))
+// 打法标签（打架/推进/带线…），按 7.42 环境整理
+const styleList = computed(() => splitStyles(hero.value?.styles))
+// YouTube 上搜这个英雄当前版本的高手录像
+const youtubeUrl = computed(() => youtubeSearchUrl(hero.value?.slug))
 
 // 复杂度 1/2/3 → ★/★★/★★★，头部徽章展示
 const starText = computed(() => complexityStars(hero.value?.complexity))
@@ -136,6 +140,10 @@ function goBack() {
           <div class="role-tags">
             <span v-for="r in roleList" :key="r" class="role-tag">{{ r }}</span>
           </div>
+          <!-- 打法标签：打架/推进/带线/抓人/发育/保人，悬停看说明 -->
+          <div v-if="styleList.length" class="role-tags">
+            <span v-for="st in styleList" :key="st" class="style-tag" :title="STYLE_HINTS[st]">{{ st }} · {{ STYLE_HINTS[st] }}</span>
+          </div>
         </div>
       </div>
 
@@ -143,6 +151,10 @@ function goBack() {
       <section class="panel tips-panel card">
         <h2><Target :size="18" class="h-icon" />打法建议</h2>
         <p>{{ hero.tips }}</p>
+        <!-- 高手录像：在 YouTube 上按"英雄英文名 + 版本号"搜索，新标签页打开 -->
+        <a class="video-link" :href="youtubeUrl" target="_blank" rel="noopener">
+          <PlayCircle :size="15" />去 YouTube 看 7.42 高手录像
+        </a>
       </section>
 
       <!-- 两栏主体：左 = 主内容（简介/技能/强化），右 = 侧栏（属性速览/克制关系）
@@ -495,6 +507,29 @@ function goBack() {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* 打法标签：金色描边，和官方定位（灰色）区分开 */
+.style-tag {
+  font-size: 13px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  background: var(--gold-tint);
+}
+.video-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--gold);
+  text-decoration: none;
+}
+.video-link:hover {
+  color: var(--gold-bright);
+  text-decoration: underline;
 }
 
 /* 官方定位标签：统一中性灰描边（用户要求：红绿蓝紫只留给主属性标签） */

@@ -49,6 +49,9 @@
     -->
     <sql id="heroColumns">${alias}id, ${alias}name, ${alias}slug, ${alias}alias, ${alias}`role`, ${alias}pos, ${alias}attr, ${alias}attack, ${alias}complexity, ${alias}avatar, ${alias}intro, ${alias}tips, ${alias}items, ${alias}counters</sql>
 
+    <!-- 打法标签在单独的 hero_style 表（手写数据，重新生成英雄数据不会冲掉），按 slug 关联 -->
+    <sql id="styleJoin">LEFT JOIN hero_style st ON st.slug = h.slug</sql>
+
     <!--
       ============================================================
       共享片段二：5 个筛选谓词
@@ -79,6 +82,9 @@
         </if>
         <if test="complexity != null">
             AND complexity = #{complexity}
+        </if>
+        <if test="style != null and style != ''">
+            AND st.styles LIKE CONCAT('%', #{style}, '%')
         </if>
     </sql>
 
@@ -125,6 +131,7 @@
         <result property="tips" column="tips"/>
         <result property="items" column="items"/>
         <result property="counters" column="counters"/>
+        <result property="styles" column="styles"/>
 
         <!-- 一对多的"多"方：每个英雄挂一个技能列表 -->
         <collection property="skills" ofType="com.dota.guide.entity.HeroSkill">
@@ -159,8 +166,9 @@
       有关键词才用权重排序，否则按 id 排。
     -->
     <select id="findByPage" resultType="com.dota.guide.entity.Hero">
-        SELECT <include refid="heroColumns"><property name="alias" value=""/></include>
-        FROM hero
+        SELECT <include refid="heroColumns"><property name="alias" value="h."/></include>, st.styles
+        FROM hero h
+        <include refid="styleJoin"/>
         WHERE 1=1
         <include refid="filters"/>
         <choose>
@@ -186,7 +194,8 @@
     -->
     <select id="countByFilter" resultType="long">
         SELECT COUNT(*)
-        FROM hero
+        FROM hero h
+        <include refid="styleJoin"/>
         WHERE 1=1
         <include refid="filters"/>
     </select>
@@ -223,9 +232,10 @@
     <select id="findByKey" resultMap="heroDetailMap">
         SELECT <include refid="heroColumns"><property name="alias" value="h."/></include>,
         s.id AS skill_id, s.hero_id AS skill_hero_id, s.skill_key, s.skill_type,
-        s.skill_category, s.is_innate, s.sort_order, s.skill_name, s.skill_desc
+        s.skill_category, s.is_innate, s.sort_order, s.skill_name, s.skill_desc, st.styles
         FROM hero h
         LEFT JOIN hero_skill s ON h.id = s.hero_id
+        <include refid="styleJoin"/>
         WHERE h.slug = #{key}
         OR h.id = #{numericKey,jdbcType=BIGINT}
         ORDER BY s.sort_order
@@ -234,9 +244,10 @@
     <!-- 复盘模块用：按 slug 一次查出一场比赛里 10 个英雄的基本信息（不带技能）。
          用 slug 而不是 id：本站 hero.id 是官网列表序号，和游戏内 hero_id 不是一套编号 -->
     <select id="findBySlugs" resultType="com.dota.guide.entity.Hero">
-        SELECT <include refid="heroColumns"><property name="alias" value=""/></include>
-        FROM hero
-        WHERE slug IN
+        SELECT <include refid="heroColumns"><property name="alias" value="h."/></include>, st.styles
+        FROM hero h
+        <include refid="styleJoin"/>
+        WHERE h.slug IN
         <foreach collection="slugs" item="s" open="(" separator="," close=")">#{s}</foreach>
     </select>
 

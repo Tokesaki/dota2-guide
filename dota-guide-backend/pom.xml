@@ -93,6 +93,7 @@
                     <include>heroes_full.sql</include>
                     <include>skills_full.sql</include>
                     <include>items_cn.sql</include>
+                    <include>hero_style.sql</include>
                 </includes>
             </resource>
         </resources>

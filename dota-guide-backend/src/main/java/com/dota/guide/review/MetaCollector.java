@@ -18,10 +18,10 @@ import java.util.Map;
  * 每隔一段时间（默认 1 小时）：
  *   1. 拉 OpenDota 的高分局公开比赛列表（/publicMatches?min_rank=80）；
  *   2. 只留天梯全英雄选择（lobby_type 7 + game_mode 22）、且没扫描过的；
- *   3. 逐场拉详情（默认每轮最多 15 场），把 10 个英雄的出装写进 meta_build；
+ *   3. 逐场拉详情（默认每轮最多 25 场），把 10 个英雄的出装写进 meta_build；
  *   4. 删掉 30 天前的旧样本。
  *
- * 额度估算：每轮 1 + 15 = 16 次请求，一天 24 轮约 380 次，给复盘页留出大部分免费额度。
+ * 额度估算：每轮 1 + 25 = 26 次请求，一天 24 轮约 620 次，给复盘页留出大部分免费额度。
  * 不想跑可以在 application.yml 里把 review.meta.enabled 设成 false。
  */
 @Component
@@ -43,7 +43,7 @@ public class MetaCollector {
     public MetaCollector(OpenDotaService od, ReviewMapper mapper,
                          @Value("${review.meta.enabled:true}") boolean enabled,
                          @Value("${review.meta.min-rank:80}") int minRank,
-                         @Value("${review.meta.matches-per-run:15}") int perRun) {
+                         @Value("${review.meta.matches-per-run:25}") int perRun) {
         this.od = od;
         this.mapper = mapper;
         this.enabled = enabled;

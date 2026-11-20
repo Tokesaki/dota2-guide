@@ -48,3 +48,37 @@ export function posFillPercent(pos) {
   const n = parseInt(pos)
   return n >= 1 && n <= 5 ? ((6 - n) / 5) * 100 : 0
 }
+
+// ------------------------------------------------------------
+// 打法标签（7.42 起新增，数据在 sql/hero_style.sql）
+// ------------------------------------------------------------
+
+/** 全部打法标签，顺序就是筛选页签的顺序 */
+export const STYLES = ['打架', '推进', '带线', '抓人', '发育', '保人']
+
+/** 每个标签一句话说明（页签悬停提示、详情页用） */
+export const STYLE_HINTS = {
+  打架: '团战和小规模打架强，跟着队伍抱团抢地图目标',
+  推进: '拆塔快，能带着队伍或召唤物一波波推进',
+  带线: '一个人带边路牵制，逼对面派人来守',
+  抓人: '前中期游走找人，靠先手和爆发抓单',
+  发育: '需要时间刷钱，装备成型后才发力',
+  保人: '有救人、加血、护盾这类保护队友的技能'
+}
+
+/** "打架,抓人" → ['打架', '抓人']；没有标签（null/空串）返回空数组 */
+export function splitStyles(styles) {
+  if (!styles) return []
+  return String(styles).split(',').map((s) => s.trim()).filter(Boolean)
+}
+
+/**
+ * 在 YouTube 上搜这个英雄的高手录像。
+ * 用英文内部名（slug）搜：YouTube 上的高分录像标题基本都是英文英雄名，
+ * 下划线换成空格（anti_mage 这种）；再带上版本号，优先出当前版本的视频。
+ */
+export function youtubeSearchUrl(slug, patch = '7.42') {
+  const name = String(slug || '').replace(/_/g, ' ').trim()
+  const q = `${name} dota 2 ${patch} pro gameplay`
+  return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q)
+}

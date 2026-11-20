@@ -8,6 +8,7 @@ import HomeView from '../views/HomeView.vue'
 import HeroDetailView from '../views/HeroDetailView.vue'
 import GuideView from '../views/GuideView.vue'
 import AdvancedView from '../views/AdvancedView.vue'
+import MetaView from '../views/MetaView.vue'
 import ReviewView from '../views/ReviewView.vue'
 import MatchReviewView from '../views/MatchReviewView.vue'
 
@@ -48,6 +49,11 @@ const routes = [
     path: '/advanced',    // 进阶页：久远Vortex 四篇教学 PDF 的总结，纯静态
     name: 'advanced',
     component: AdvancedView
+  },
+  {
+    path: '/meta',        // 版本环境：当前版本对节奏影响最大的通用改动 + 打法解读，纯静态
+    name: 'meta',
+    component: MetaView
   },
   {
     path: '/review',      // 比赛复盘入口：输入好友代码看最近比赛，或直接输入比赛编号

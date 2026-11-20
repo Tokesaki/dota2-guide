@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Profile("desktop")
 public class SpaForwardController {
 
-    @GetMapping({"/heroes", "/heroes/{key}", "/advanced", "/review", "/review/{matchId}"})
+    @GetMapping({"/heroes", "/heroes/{key}", "/advanced", "/meta", "/review", "/review/{matchId}"})
     public String forward() {
         return "forward:/index.html";
     }

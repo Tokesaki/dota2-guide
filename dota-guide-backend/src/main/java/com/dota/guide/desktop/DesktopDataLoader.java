@@ -24,7 +24,7 @@ import java.util.List;
  * 每次启动做两件事：
  *   1. 执行 db/desktop-schema.sql 建表（CREATE TABLE IF NOT EXISTS，已有的表不动）；
  *   2. 清空英雄、技能表，重新导入 jar 里自带的 heroes_full.sql / skills_full.sql
- *      （以及有的话 items_cn.sql）。
+ *      （以及有的话 items_cn.sql、hero_style.sql）。
  *
  * 为什么每次都重导？英雄数据是跟着软件版本走的，新版软件带了新数据，
  * 用户一启动就该看到；900 多行导一次不到一秒。
@@ -56,6 +56,7 @@ public class DesktopDataLoader implements ApplicationRunner {
         List<String> heroes = insertsOf(read("db/data/heroes_full.sql"));
         List<String> skills = insertsOf(read("db/data/skills_full.sql"));
         String itemsCn = readOptional("db/data/items_cn.sql");
+        String heroStyle = readOptional("db/data/hero_style.sql");
         tx.executeWithoutResult(status -> {
             jdbc.execute("DELETE FROM hero_skill");
             jdbc.execute("DELETE FROM hero");
@@ -64,6 +65,10 @@ public class DesktopDataLoader implements ApplicationRunner {
             if (itemsCn != null) {
                 jdbc.execute("DELETE FROM item_cn");
                 insertsOf(itemsCn).forEach(jdbc::execute);
+            }
+            if (heroStyle != null) {
+                jdbc.execute("DELETE FROM hero_style");
+                insertsOf(heroStyle).forEach(jdbc::execute);
             }
         });
         Integer h = jdbc.queryForObject("SELECT COUNT(*) FROM hero", Integer.class);

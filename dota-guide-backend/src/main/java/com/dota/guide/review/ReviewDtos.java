@@ -57,10 +57,23 @@ public final class ReviewDtos {
                               List<PlayerReview> players) {
     }
 
-    /** 英雄页"高分局出装"：source = high-rank（本站攒的高分局样本）或 popularity（OpenDota 全分段热度） */
+    /**
+     * 英雄页"高分局出装"：source = high-rank（本站攒的高分局样本）或 popularity（OpenDota 全分段热度）。
+     * patch / patchStart：当前版本号和更新时间，高分局样本和职业比赛都只统计这之后的比赛。
+     * proCore / proGames：职业比赛的常见出装和最近几场明细（OpenDota 职业比赛库）。
+     */
     public record HeroBuilds(String source, int sampleSize, int minRank,
                              List<BuildStats.ItemStat> core,
-                             List<PhaseItems> phases) {
+                             List<PhaseItems> phases,
+                             String patch, long patchStart,
+                             List<BuildStats.ItemStat> proCore,
+                             List<ProGame> proGames) {
+    }
+
+    /** 一场职业比赛里这个英雄的表现和最终出装；player / league 可能为空（不在 OpenDota 知名选手名单里） */
+    public record ProGame(long matchId, long startTime, int duration, boolean win,
+                          String player, String league, int kills, int deaths, int assists,
+                          Integer laneRole, List<ItemView> items, ItemView neutral) {
     }
 
     /** OpenDota itemPopularity 的一个阶段（开局 / 前期 / 中期 / 后期） */

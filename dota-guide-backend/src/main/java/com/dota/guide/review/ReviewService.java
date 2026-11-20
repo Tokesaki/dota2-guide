@@ -13,6 +13,7 @@ import com.dota.guide.review.ReviewDtos.PhaseItem;
 import com.dota.guide.review.ReviewDtos.PhaseItems;
 import com.dota.guide.review.ReviewDtos.PlayerProfile;
 import com.dota.guide.review.ReviewDtos.PlayerReview;
+import com.dota.guide.review.ReviewDtos.ProGame;
 import com.dota.guide.review.ReviewDtos.RecentMatch;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
@@ -68,13 +69,20 @@ public class ReviewService {
     private final HeroMapper heroMapper;
     private final ReviewMapper reviewMapper;
     private final int metaMinRank;
+    /** 当前版本号和更新时间（Unix 秒）：出新版本后改 application.yml 里的 review.patch 两项 */
+    private final String patchName;
+    private final long patchStart;
 
     public ReviewService(OpenDotaService od, HeroMapper heroMapper, ReviewMapper reviewMapper,
-                         @Value("${review.meta.min-rank:80}") int metaMinRank) {
+                         @Value("${review.meta.min-rank:80}") int metaMinRank,
+                         @Value("${review.patch.name:7.42}") String patchName,
+                         @Value("${review.patch.start:1794988800}") long patchStart) {
         this.od = od;
         this.heroMapper = heroMapper;
         this.reviewMapper = reviewMapper;
         this.metaMinRank = metaMinRank;
+        this.patchName = patchName;
+        this.patchStart = patchStart;
     }
 
     // ==================== 玩家最近比赛 ====================
@@ -198,7 +206,7 @@ public class ReviewService {
         List<String> missingNames = new ArrayList<>();
         List<ReviewRules.LateItem> late = new ArrayList<>();
         List<BuildStats.BuildRow> rows = reviewMapper.findBuilds((int) heroId,
-                System.currentTimeMillis() / 1000 - SAMPLE_DAYS * 86400L, 1000);
+                Math.max(System.currentTimeMillis() / 1000 - SAMPLE_DAYS * 86400L, patchStart), 1000);
         if (rows.size() >= MIN_SAMPLES && !catalog.isEmpty()) {
             List<BuildStats.ItemStat> all = BuildStats.aggregate(rows, catalog, 0, Integer.MAX_VALUE);
             List<BuildStats.ItemStat> common = BuildStats.aggregate(rows, catalog, 1500, 12);
@@ -269,8 +277,9 @@ public class ReviewService {
         int heroId = gameId;   // meta_build 和 OpenDota 用的都是游戏内 hero_id
         ItemCatalog catalog = safeCatalog();
 
-        List<BuildStats.BuildRow> rows = reviewMapper.findBuilds(heroId,
-                System.currentTimeMillis() / 1000 - SAMPLE_DAYS * 86400L, 1000);
+        // 只看当前版本的样本：大版本改了物品和英雄，旧版本的出装会误导人
+        long since = Math.max(System.currentTimeMillis() / 1000 - SAMPLE_DAYS * 86400L, patchStart);
+        List<BuildStats.BuildRow> rows = reviewMapper.findBuilds(heroId, since, 1000);
         List<BuildStats.ItemStat> core = rows.size() >= MIN_SAMPLES
                 ? BuildStats.aggregate(rows, catalog, 1500, 12) : List.of();
 
@@ -295,7 +304,57 @@ public class ReviewService {
         } catch (ReviewException | NumberFormatException e) {
             log.warn("拉取英雄 {} 出装热度失败：{}", heroId, e.getMessage());
         }
-        return new HeroBuilds(core.isEmpty() ? "popularity" : "high-rank", rows.size(), metaMinRank, core, phases);
+
+        List<ProGame> proGames = new ArrayList<>();
+        List<BuildStats.ItemStat> proCore = List.of();
+        try {
+            List<BuildStats.BuildRow> proRows = new ArrayList<>();
+            for (JsonNode g : od.proGames(heroId, patchStart)) {
+                List<Integer> ids = new ArrayList<>();
+                List<ItemView> items = new ArrayList<>();
+                for (int i = 0; i < 6; i++) {
+                    int id = g.path("item_" + i).asInt();
+                    ids.add(id);
+                    ItemView v = itemView(catalog, id);
+                    if (v != null) {
+                        items.add(v);
+                    }
+                }
+                proRows.add(new BuildStats.BuildRow(g.path("win").asBoolean(), joinIds(ids), ""));
+                proGames.add(new ProGame(g.path("match_id").asLong(), g.path("start_time").asLong(),
+                        g.path("duration").asInt(), g.path("win").asBoolean(),
+                        textOrNull(g, "player"), textOrNull(g, "league"),
+                        g.path("kills").asInt(), g.path("deaths").asInt(), g.path("assists").asInt(),
+                        g.hasNonNull("lane_role") ? g.get("lane_role").asInt() : null,
+                        items, itemView(catalog, g.path("item_neutral").asInt())));
+            }
+            proCore = BuildStats.aggregate(proRows, catalog, 1500, 10);
+        } catch (ReviewException e) {
+            log.warn("拉取英雄 {} 职业比赛出装失败：{}", heroId, e.getMessage());
+        }
+        return new HeroBuilds(core.isEmpty() ? "popularity" : "high-rank", rows.size(), metaMinRank, core, phases,
+                patchName, patchStart, proCore, proGames.size() > 12 ? proGames.subList(0, 12) : proGames);
+    }
+
+    private static ItemView itemView(ItemCatalog catalog, int id) {
+        ItemCatalog.Item it = id > 0 ? catalog.byId(id) : null;
+        return it == null ? null : new ItemView(it.id(), it.key(), it.name(), it.img(), it.cost(), null);
+    }
+
+    private static String textOrNull(JsonNode node, String field) {
+        String s = node.path(field).asText("");
+        return s.isBlank() ? null : s;
+    }
+
+    private static String joinIds(List<Integer> ids) {
+        StringBuilder sb = new StringBuilder();
+        for (int id : ids) {
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
+            sb.append(id);
+        }
+        return sb.toString();
     }
 
     // ==================== 工具 ====================

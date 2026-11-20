@@ -21,6 +21,7 @@ import java.util.Map;
  *   最近比赛列表        5 分钟
  *   物品常量            7 天
  *   英雄出装热度        1 天
+ *   职业比赛出装        6 小时
  */
 @Service
 public class OpenDotaService {
@@ -30,6 +31,9 @@ public class OpenDotaService {
     private static final Duration CONSTANTS_TTL = Duration.ofDays(7);
     private static final Duration POPULARITY_TTL = Duration.ofDays(1);
     private static final Duration PARSE_REQUEST_COOLDOWN = Duration.ofMinutes(30);
+    private static final Duration PRO_TTL = Duration.ofHours(6);
+    /** 职业比赛最多取最近多少场 */
+    static final int PRO_LIMIT = 40;
 
     private final OpenDotaClient client;
     private final ReviewMapper mapper;
@@ -87,6 +91,40 @@ public class OpenDotaService {
     /** 高分局公开比赛列表（不缓存，每次都要新的） */
     public JsonNode publicMatches(int minRank) {
         return parse(client.get("/publicMatches?min_rank=" + minRank));
+    }
+
+    /**
+     * 某英雄在职业比赛里的最近出场（OpenDota Explorer：直接对它的职业比赛库跑 SQL）。
+     * 一次请求就能拿到几十场的最终出装、选手名、联赛名，比一场场拉详情省额度得多。
+     *
+     * @param since 只要这个时间（Unix 秒）之后的比赛，一般传当前版本的更新时间
+     * @return 行数组，每行 match_id / start_time / duration / win / item_0..5 / item_neutral /
+     *         kills / deaths / assists / lane_role / player / league
+     */
+    public JsonNode proGames(int heroId, long since) {
+        String key = "pro:" + heroId + ":" + since;
+        ReviewMapper.CacheRow row = mapper.findCache(key);
+        if (row != null && fresh(row, PRO_TTL)) {
+            return parse(row.body);
+        }
+        // SQL 直接放进 URL：RestClient 会按 URI 规则编码空格、尖括号等；
+        // 注意别写 + 和 & 这两个字符（会被当成空格和参数分隔符）
+        String sql = "SELECT m.match_id, m.start_time, m.duration, (pm.player_slot < 128) = m.radiant_win AS win,"
+                + " pm.item_0, pm.item_1, pm.item_2, pm.item_3, pm.item_4, pm.item_5, pm.item_neutral,"
+                + " pm.kills, pm.deaths, pm.assists, pm.lane_role, np.name AS player, l.name AS league"
+                + " FROM player_matches pm JOIN matches m USING (match_id)"
+                + " LEFT JOIN notable_players np ON np.account_id = pm.account_id"
+                + " LEFT JOIN leagues l ON l.leagueid = m.leagueid"
+                + " WHERE pm.hero_id = " + heroId + " AND m.start_time > " + since
+                + " ORDER BY m.start_time DESC LIMIT " + PRO_LIMIT;
+        JsonNode resp = parse(client.get("/explorer?sql=" + sql));
+        if (resp.hasNonNull("err") || !resp.path("rows").isArray()) {
+            throw new ReviewException(502, "OpenDota 职业比赛查询失败");
+        }
+        // 只缓存 rows：Explorer 的返回里还带着一大段字段类型说明，用不上
+        String rows = resp.get("rows").toString();
+        mapper.saveCache(key, rows);
+        return resp.get("rows");
     }
 
     /**

@@ -72,3 +72,9 @@ CREATE TABLE IF NOT EXISTS item_cn (
     name_cn  VARCHAR(64) NOT NULL,
     PRIMARY KEY (item_id)
 );
+
+CREATE TABLE IF NOT EXISTS hero_style (
+    slug   VARCHAR(64) NOT NULL,
+    styles VARCHAR(64) NOT NULL,
+    PRIMARY KEY (slug)
+);

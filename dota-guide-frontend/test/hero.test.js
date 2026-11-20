@@ -11,7 +11,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { splitRoles, complexityStars, posFillPercent } from '../src/domain/hero.js'
+import { splitRoles, complexityStars, posFillPercent, splitStyles, youtubeSearchUrl, STYLES, STYLE_HINTS } from '../src/domain/hero.js'
 
 // ---------- 定位 ----------
 
@@ -82,4 +82,21 @@ test('posFillPercent：解析不出合法号位时返回 0（模板据此不画�
   for (const bad of ['', null, undefined, '全位置', '0号位', '6号位']) {
     assert.equal(posFillPercent(bad), 0, `posFillPercent(${JSON.stringify(bad)}) 应该是 0`)
   }
+})
+
+test('splitStyles：逗号分隔，空值返回空数组', () => {
+  assert.deepEqual(splitStyles('打架,抓人'), ['打架', '抓人'])
+  assert.deepEqual(splitStyles(' 推进 , '), ['推进'])
+  assert.deepEqual(splitStyles(null), [])
+  assert.deepEqual(splitStyles(''), [])
+})
+
+test('每个打法标签都有说明', () => {
+  for (const s of STYLES) assert.ok(STYLE_HINTS[s], s)
+})
+
+test('youtubeSearchUrl：下划线换空格，带版本号', () => {
+  const url = youtubeSearchUrl('phantom_assassin', '7.42')
+  assert.ok(url.startsWith('https://www.youtube.com/results?search_query='))
+  assert.equal(decodeURIComponent(url.split('=')[1]), 'phantom assassin dota 2 7.42 pro gameplay')
 })

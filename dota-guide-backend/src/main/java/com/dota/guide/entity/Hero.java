@@ -54,6 +54,9 @@ public class Hero {
     /** 克制关系与注意事项 —— 第二阶段新增列 */
     private String counters;
 
+    /** 打法标签（打架/推进/带线/抓人/发育/保人，逗号分隔）—— 来自 hero_style 表，没打标签时为 null */
+    private String styles;
+
     // ==================== getter / setter ====================
     // 序列化为 JSON、MyBatis 填充数据时都会调用它们，缺一不可
 
@@ -167,5 +170,13 @@ public class Hero {
 
     public void setCounters(String counters) {
         this.counters = counters;
+    }
+
+    public String getStyles() {
+        return styles;
+    }
+
+    public void setStyles(String styles) {
+        this.styles = styles;
     }
 }

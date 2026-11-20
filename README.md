@@ -133,7 +133,8 @@ mysql -u root -p < sql/init.sql
 3. [sql/skills_full.sql](sql/skills_full.sql) —— 全部 795 条技能
 
 4. [sql/review.sql](sql/review.sql) —— 比赛复盘模块的 4 张表（可重复执行，不动英雄数据）
-5. （可选）物品中文名：`node sql/download_items_cn.js` 生成 `sql/items_cn.sql` 再导入；不导入时物品显示英文名
+5. [sql/hero_style.sql](sql/hero_style.sql) —— 英雄打法标签（打架 / 推进 / 带线 / 抓人 / 发育 / 保人），**必须导入**，英雄列表会关联这张表
+6. 物品中文名：[sql/items_cn.sql](sql/items_cn.sql)（由 `node sql/download_items_cn.js` 生成，已附带 7.42 版本）；不导入时物品显示英文名
 
 > 💡 后两个脚本会先清空表再插入，可重复执行。执行完需要**重启后端**。
 >
