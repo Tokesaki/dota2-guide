@@ -231,4 +231,12 @@
         ORDER BY s.sort_order
     </select>
 
+    <!-- 复盘模块用：一次查出一场比赛里 10 个英雄的基本信息（不带技能） -->
+    <select id="findByIds" resultType="com.dota.guide.entity.Hero">
+        SELECT <include refid="heroColumns"><property name="alias" value=""/></include>
+        FROM hero
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
 </mapper>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  ReviewMapper.xml —— 复盘模块的 SQL（表结构见 sql/review.sql）
+-->
+<mapper namespace="com.dota.guide.review.ReviewMapper">
+
+    <select id="findCache" resultType="com.dota.guide.review.ReviewMapper$CacheRow">
+        SELECT body, fetched_at FROM od_cache WHERE cache_key = #{key}
+    </select>
+
+    <!-- 有就更新、没有就插入：MySQL 的 ON DUPLICATE KEY UPDATE，5.7 支持 -->
+    <insert id="saveCache">
+        INSERT INTO od_cache (cache_key, body, fetched_at) VALUES (#{key}, #{body}, NOW())
+        ON DUPLICATE KEY UPDATE body = VALUES(body), fetched_at = VALUES(fetched_at)
+    </insert>
+
+    <select id="findItemCn" resultType="com.dota.guide.review.ReviewMapper$ItemCn">
+        SELECT item_id, name_cn FROM item_cn
+    </select>
+
+    <select id="countScanned" resultType="int">
+        SELECT COUNT(*) FROM meta_scan WHERE match_id = #{matchId}
+    </select>
+
+    <insert id="markScanned">
+        INSERT IGNORE INTO meta_scan (match_id, scanned_at) VALUES (#{matchId}, NOW())
+    </insert>
+
+    <insert id="insertBuild" parameterType="com.dota.guide.review.ReviewMapper$BuildInsert">
+        INSERT IGNORE INTO meta_build (match_id, hero_id, win, avg_rank_tier, start_time, duration, items, first_buys)
+        VALUES (#{matchId}, #{heroId}, #{win}, #{avgRankTier}, #{startTime}, #{duration}, #{items}, #{firstBuys})
+    </insert>
+
+    <select id="findBuilds" resultType="com.dota.guide.review.BuildStats$BuildRow">
+        SELECT win, items, first_buys
+        FROM meta_build
+        WHERE hero_id = #{heroId} AND start_time >= #{since}
+        ORDER BY start_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <delete id="deleteBuildsBefore">
+        DELETE FROM meta_build WHERE start_time &lt; #{before}
+    </delete>
+
+</mapper>

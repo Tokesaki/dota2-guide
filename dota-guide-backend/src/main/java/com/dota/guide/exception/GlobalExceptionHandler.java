@@ -29,6 +29,16 @@ public class GlobalExceptionHandler {
      *
      * @param e 被捕获的异常对象
      */
+    /**
+     * 复盘模块的业务异常（比赛不存在、OpenDota 额度用完等）：把它自带的 code 和原因原样返回，
+     * 不当成服务器内部错误打堆栈。
+     */
+    @ExceptionHandler(com.dota.guide.review.ReviewException.class)
+    public Result<Void> handleReviewException(com.dota.guide.review.ReviewException e) {
+        log.warn("复盘请求失败：{}", e.getMessage());
+        return Result.error(e.getCode(), e.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         // 详细堆栈打印到后端控制台（开发调试的关键信息），不暴露给前端

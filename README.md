@@ -12,6 +12,9 @@
 - **英雄详情** —— 技能（主动/被动、魔晶/神杖、D/F 键）、装备推荐、克制关系、新手打法建议
 - **新手须知** —— 1–5 号位资源分配体系 + 与 LOL/王者的关键差异，为转学玩家准备
 - **进阶攻略** —— 对线期到中后期的运营思路（内容来源见页面内标注）
+- **比赛复盘** —— 输入 Steam 好友代码看最近比赛，或直接输入比赛编号：推测号位、GPM/补刀等和全服同英雄比的百分位、
+  出装和购买时间、和高分局出装对比、规则生成的复盘建议，再配上图鉴里这个英雄的打法建议（数据来自 [OpenDota](https://www.opendota.com)）
+- **高分局出装** —— 后端每小时采集一批冠绝段位的天梯比赛，英雄详情页显示常出大件、出场率和平均成型时间
 - **一键更新** —— `bash sql/update_all.sh` 从官网重新拉取数据并重建数据库
 
 ## 技术栈与版本
@@ -104,11 +107,14 @@ XM-01/
 mysql -u root -p < sql/init.sql
 ```
 
-按顺序执行 3 个脚本，**顺序不能反**：
+按顺序执行下面的脚本，**顺序不能反**：
 
 1. [sql/init.sql](sql/init.sql) —— 建库建表 + 5 条示例数据
 2. [sql/heroes_full.sql](sql/heroes_full.sql) —— 官网全部 127 名英雄
 3. [sql/skills_full.sql](sql/skills_full.sql) —— 全部 795 条技能
+
+4. [sql/review.sql](sql/review.sql) —— 比赛复盘模块的 4 张表（可重复执行，不动英雄数据）
+5. （可选）物品中文名：`node sql/download_items_cn.js` 生成 `sql/items_cn.sql` 再导入；不导入时物品显示英文名
 
 > 💡 后两个脚本会先清空表再插入，可重复执行。执行完需要**重启后端**。
 >
@@ -222,6 +228,27 @@ npm run dev
 
 404 示例：`{ "code": 404, "message": "英雄不存在（sven）", "data": null }`
 
+### 接口三：比赛复盘（数据来自 OpenDota）
+
+| 接口 | 说明 |
+|---|---|
+| `GET /api/review/players/{accountId}` | 玩家资料 + 最近 20 场。`accountId` 是 Steam 好友代码 |
+| `GET /api/review/matches/{matchId}` | 单场复盘：10 个人的数据、推测号位、百分位、出装、高分局对比、建议。比赛没被 OpenDota 解析过时会自动请求一次解析 |
+| `POST /api/review/matches/{matchId}/parse` | 手动请求解析（30 分钟内同一场只发一次） |
+| `GET /api/review/heroes/{key}/builds` | 英雄的高分局出装 + OpenDota 全分段分阶段出装热度 |
+
+几点说明：
+
+- **额度**：OpenDota 免费额度约每分钟 60 次、每天 2000 次。后端把查过的数据缓存在 `od_cache` 表
+  （已解析的比赛永久缓存），请求之间自动间隔 1.1 秒。有 API Key 的话用环境变量 `OPENDOTA_API_KEY` 传入。
+- **解析**：没解析过的比赛只有最终出装和总数据；解析后才有出装时间、分路、10 分钟补刀。
+  复盘页会提示并自动请求解析，几分钟后刷新即可。
+- **号位是推测的**：解析过的比赛按分路 + 经济推测，没解析过的只能按队内经济排名粗略推测。
+- **高分局样本**：`MetaCollector` 每小时从 `/publicMatches?min_rank=80` 拉一批天梯全英雄选择的比赛，
+  每个英雄攒够 20 场才做对比，只保留最近 30 天。配置在 `application.yml` 的 `review.meta.*`，
+  不想跑可以设 `enabled: false`。
+- **图鉴里没有的英雄**（官网新出、本站还没补数据）也能复盘，只是显示成"英雄 #id"、没有打法建议。
+
 ## 一键更新流水线
 
 Dota 出新版本，或改了数据库里的教学文案想重新整合时，一条命令：
@@ -278,7 +305,11 @@ node --test
 cd dota-guide-backend
 ./mvnw test
 
-# 前端单元测试（36 条，什么都不需要，纯函数）
+# 复盘模块纯逻辑测试（11 条，不需要数据库和网络）
+cd dota-guide-backend
+./mvnw test -Dtest=ReviewLogicTest
+
+# 前端单元测试（43 条，什么都不需要，纯函数）
 cd dota-guide-frontend
 npm test
 ```

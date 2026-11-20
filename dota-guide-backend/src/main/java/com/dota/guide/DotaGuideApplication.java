@@ -2,6 +2,7 @@ package com.dota.guide;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 启动类 —— 整个 Spring Boot 应用的入口
@@ -17,6 +18,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 所以后面写的 Controller/Service/Mapper 只要放在 com.dota.guide 包下，
  * 不需要任何额外的"注册"代码，Spring 会自动发现它们 —— 这叫"约定优于配置"。
  */
+@EnableScheduling // 开启定时任务（复盘模块的 MetaCollector 每小时采集高分局出装）
 @SpringBootApplication // 组合注解 = @Configuration + @EnableAutoConfiguration + @ComponentScan
 public class DotaGuideApplication {
 

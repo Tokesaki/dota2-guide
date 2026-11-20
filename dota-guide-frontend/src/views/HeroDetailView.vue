@@ -12,6 +12,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getHeroDetail } from '../api/hero'
+import HeroBuildsPanel from '../components/HeroBuildsPanel.vue'
 // lucide 图标：全站 emoji 统一换成 SVG 图标库
 import { Target, BookOpen, Swords, Gem, ClipboardList, Scale, CircleX, ArrowLeft } from 'lucide-vue-next'
 // 全站共享常量：更新日期四页统一取这里
@@ -197,6 +198,8 @@ function goBack() {
               </div>
             </div>
           </section>
+          <!-- 高分局出装（比赛复盘模块的数据；后端没开或连不上 OpenDota 时整块不显示） -->
+          <HeroBuildsPanel :hero-key="props.heroKey" />
         </div>
 
         <!-- 右栏：侧栏（窄栏固定宽度，信息速览用） -->

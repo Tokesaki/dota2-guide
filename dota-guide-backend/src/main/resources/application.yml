@@ -45,3 +45,26 @@ mybatis:
     # 把 MyBatis 实际执行的 SQL 打印到控制台：
     # 对新手学习 SQL 和排查问题非常有帮助，上线前记得改成其他实现或删除
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# ============================================================
+# 比赛复盘模块（数据来自 OpenDota）
+# ============================================================
+review:
+  opendota:
+    base-url: https://api.opendota.com/api
+    # 可选：OpenDota 的 API Key（https://www.opendota.com/api-keys），不填用免费额度
+    # （约每分钟 60 次、每天 2000 次）。建议用环境变量传入，不要提交到仓库：
+    #   OPENDOTA_API_KEY=xxx ./mvnw spring-boot:run
+    api-key: ${OPENDOTA_API_KEY:}
+    # 两次请求之间至少间隔多少毫秒（免费额度每分钟 60 次，1100 刚好不超）
+    min-interval-ms: 1100
+  meta:
+    # 是否定时采集高分局出装样本
+    enabled: true
+    # 高分局的段位门槛：OpenDota rank_tier，80 = 冠绝一世
+    min-rank: 80
+    # 每轮最多拉几场比赛详情
+    matches-per-run: 15
+    # 每轮间隔（毫秒），默认 1 小时；启动后 1 分钟跑第一轮
+    interval-ms: 3600000
+    initial-delay-ms: 60000

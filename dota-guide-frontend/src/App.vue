@@ -7,7 +7,7 @@
 <script setup>
 // 全站图标统一用 lucide-vue-next（SVG 图标库，替代原来的 emoji）：
 // SVG 是矢量图形，任何分辨率都清晰；颜色走 CSS 的 currentColor，hover 变金色天然生效
-import { Shield, BookOpen, Users, TrendingUp } from 'lucide-vue-next'
+import { Shield, BookOpen, Users, TrendingUp, Swords } from 'lucide-vue-next'
 </script>
 
 <template>
@@ -31,6 +31,9 @@ import { Shield, BookOpen, Users, TrendingUp } from 'lucide-vue-next'
         </router-link>
         <router-link to="/advanced" class="nav-link">
           <TrendingUp :size="15" />进阶
+        </router-link>
+        <router-link to="/review" class="nav-link">
+          <Swords :size="15" />比赛复盘
         </router-link>
       </nav>
     </header>
