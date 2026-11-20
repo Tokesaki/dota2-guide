@@ -87,6 +87,25 @@ XM-01/
 **请求链路**：前端 Axios → Controller（接请求）→ Service（业务）→ Mapper（SQL）→ MySQL
 → 原路返回 JSON。
 
+## 本地软件版（Windows，免安装）
+
+不想装 MySQL / JDK / Node，只想用的话：
+
+1. 在 GitHub 仓库页打开 **Actions → Build desktop app**，点最近一次成功的运行，
+   在页面底部 **Artifacts** 里下载 `Dota2Review-windows`（打了 `v` 开头的 tag 时也会发布到 Releases）
+2. 解压，双击 `Dota2Review.exe`，浏览器会自动打开 http://localhost:17788
+3. 右下角托盘图标：双击重新打开页面，右键「退出」关闭程序
+
+它和开发版是同一套代码，区别只在启动参数 `--desktop`（见 `application-desktop.yml`）：
+
+- 数据库换成 H2 内嵌数据库，存在 `用户目录/.dota2-review/`，启动时自动建表并导入英雄、技能数据；
+- 前端打包后由后端直接托管，只用一个端口，只监听本机；
+- 用 `jpackage` 带上精简版 Java 运行环境（约 100MB），电脑上不需要装 Java。
+
+自己打包：`npx vite build` → 把 `dist` 复制到 `dota-guide-backend/src/main/resources/static` →
+`./mvnw package` → `java -jar target/dota-guide-backend-*.jar --desktop` 就能本地试；
+生成 exe 的完整步骤见 [.github/workflows/desktop.yml](.github/workflows/desktop.yml)。
+
 ## 环境准备
 
 | 软件 | 要求 | 检查命令 |
@@ -305,9 +324,9 @@ node --test
 cd dota-guide-backend
 ./mvnw test
 
-# 复盘模块纯逻辑测试（11 条，不需要数据库和网络）
+# 复盘模块 + 本地软件数据导入测试（13 条，不需要 MySQL 和网络）
 cd dota-guide-backend
-./mvnw test -Dtest=ReviewLogicTest
+./mvnw test -Dtest=ReviewLogicTest,DesktopDataLoaderTest
 
 # 前端单元测试（43 条，什么都不需要，纯函数）
 cd dota-guide-frontend

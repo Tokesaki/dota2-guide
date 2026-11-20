@@ -23,6 +23,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class DotaGuideApplication {
 
     public static void main(String[] args) {
+        // 带 --desktop 参数启动 = 本地软件模式（见 application-desktop.yml 和 desktop 包）
+        if (java.util.Arrays.asList(args).contains("--desktop")) {
+            com.dota.guide.desktop.DesktopLauncher.launch(DotaGuideApplication.class, args);
+            return;
+        }
         // 启动应用；返回值是 Spring 容器上下文（本项目用不到）
         SpringApplication.run(DotaGuideApplication.class, args);
     }

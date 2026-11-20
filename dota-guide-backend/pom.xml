@@ -59,6 +59,14 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- 3b. H2 内嵌数据库：只在"本地软件"模式（desktop profile）下使用，
+             数据存在用户目录的一个文件里，不用另外安装 MySQL -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- 4. 测试起步依赖：JUnit 5 + Spring Test + AssertJ + MockMvc。
              scope=test 表示只在跑测试时参与，打包出来的 jar 里不含它。
              版本号同样由父工程管理。
@@ -72,6 +80,22 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- 本地软件模式启动时要导入英雄和技能数据：直接把 sql/ 下的两份数据文件打进 jar，
+                 不在后端再复制一份（复制就会有"改了一份忘了另一份"的风险） -->
+            <resource>
+                <directory>../sql</directory>
+                <targetPath>db/data</targetPath>
+                <includes>
+                    <include>heroes_full.sql</include>
+                    <include>skills_full.sql</include>
+                    <include>items_cn.sql</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <!-- Spring Boot 打包/运行插件：mvn spring-boot:run 就是靠它启动应用的 -->
             <plugin>

@@ -8,8 +8,8 @@ import axios from 'axios'
 // 创建 axios 实例（相当于"配置好默认参数的请求工具"）
 const request = axios.create({
   // 后端地址：所有请求都会自动拼上这个前缀
-  // 例如 request.get('/heroes') 实际请求 http://localhost:8080/api/heroes
-  baseURL: 'http://localhost:8080/api',
+  // 例如 request.get("/heroes") 实际请求 /api/heroes（开发时由 vite 代理转给 8080 端口的后端）
+  baseURL: '/api',
   // 超过 5 秒没响应就报错，避免页面一直转圈
   timeout: 5000
 })

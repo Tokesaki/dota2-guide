@@ -40,3 +40,9 @@ Desktop.ini
 **/application-local.properties
 .env
 .env.local
+
+# ============ 本地软件打包 ============
+# 打包时把前端 dist 复制到这里，由后端托管；不入库
+dota-guide-backend/src/main/resources/static/
+# jpackage 输出
+dist-desktop/
