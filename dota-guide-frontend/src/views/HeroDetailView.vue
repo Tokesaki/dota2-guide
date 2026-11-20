@@ -14,7 +14,7 @@ import { useRouter } from 'vue-router'
 import { getHeroDetail } from '../api/hero'
 import HeroBuildsPanel from '../components/HeroBuildsPanel.vue'
 // lucide 图标：全站 emoji 统一换成 SVG 图标库
-import { Target, BookOpen, Swords, Gem, ClipboardList, Scale, CircleX, ArrowLeft, PlayCircle } from 'lucide-vue-next'
+import { Target, BookOpen, Swords, Gem, ClipboardList, Scale, CircleX, ArrowLeft, PlayCircle, Trophy } from 'lucide-vue-next'
 // 全站共享常量：更新日期四页统一取这里
 import { UPDATE_DATE } from '../constants'
 // 值 → 界面标识的映射（主属性色 token、技能徽章、技能色条类名）
@@ -22,6 +22,7 @@ import { attrToken, categoryBadge, skillBarClass } from '../domain/vocab'
 // 技能的领域谓词（算不算"强化类"、算不算"先天"）
 import { isUpgradeSkill, isInnate } from '../domain/skill'
 // 英雄字段的展示换算（定位拆分 / 难度星 / 号位进度条）
+import { d2ptUrl } from '../domain/heroNamesEn'
 import { splitRoles, complexityStars, posFillPercent, splitStyles, STYLE_HINTS, youtubeSearchUrl } from '../domain/hero'
 
 // router/index.js 里配了一个 props 函数，把 URL 里的 :key 改名成 heroKey 传进来：
@@ -58,6 +59,8 @@ const roleList = computed(() => splitRoles(hero.value?.role))
 const styleList = computed(() => splitStyles(hero.value?.styles))
 // YouTube 上搜这个英雄当前版本的高手录像
 const youtubeUrl = computed(() => youtubeSearchUrl(hero.value?.slug))
+// dota2protracker：职业比赛出装、号位、对线数据（它不让程序抓，只能在浏览器里打开看）
+const d2pt = computed(() => d2ptUrl(hero.value?.slug))
 
 // 复杂度 1/2/3 → ★/★★/★★★，头部徽章展示
 const starText = computed(() => complexityStars(hero.value?.complexity))
@@ -154,6 +157,9 @@ function goBack() {
         <!-- 高手录像：在 YouTube 上按"英雄英文名 + 版本号"搜索，新标签页打开 -->
         <a class="video-link" :href="youtubeUrl" target="_blank" rel="noopener">
           <PlayCircle :size="15" />去 YouTube 看 7.42 高手录像
+        </a>
+        <a class="video-link" :href="d2pt" target="_blank" rel="noopener">
+          <Trophy :size="15" />在 dota2protracker 看职业出装和号位
         </a>
       </section>
 
@@ -519,6 +525,7 @@ function goBack() {
   background: var(--gold-tint);
 }
 .video-link {
+  margin-right: 18px;
   display: inline-flex;
   align-items: center;
   gap: 6px;

@@ -5,6 +5,7 @@
   默认选中 URL 里 ?account= 指定的玩家（从"最近比赛"点进来时会带上），没有就选第一个。
 -->
 <script setup>
+import { d2ptUrl } from '../domain/heroNamesEn'
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, CircleX, RefreshCw, Lightbulb, Package, BarChart3, BookOpen } from 'lucide-vue-next'
@@ -151,6 +152,7 @@ function dateText(ts) {
             </p>
           </div>
           <router-link v-if="p.hero.slug" :to="`/heroes/${p.hero.slug}`" class="hero-link">查看图鉴</router-link>
+          <a v-if="p.hero.slug" :href="d2ptUrl(p.hero.slug)" target="_blank" rel="noopener" class="hero-link">职业出装（dota2protracker）</a>
         </div>
 
         <div class="grid">

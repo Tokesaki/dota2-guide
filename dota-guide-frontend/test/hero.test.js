@@ -11,6 +11,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
+import { d2ptUrl, HERO_NAMES_EN } from '../src/domain/heroNamesEn.js'
 import { splitRoles, complexityStars, posFillPercent, splitStyles, youtubeSearchUrl, STYLES, STYLE_HINTS } from '../src/domain/hero.js'
 
 // ---------- 定位 ----------
@@ -99,4 +100,10 @@ test('youtubeSearchUrl：下划线换空格，带版本号', () => {
   const url = youtubeSearchUrl('phantom_assassin', '7.42')
   assert.ok(url.startsWith('https://www.youtube.com/results?search_query='))
   assert.equal(decodeURIComponent(url.split('=')[1]), 'phantom assassin dota 2 7.42 pro gameplay')
+})
+
+test('d2ptUrl：英文名编码进网址，未知英雄退回首页', () => {
+  assert.equal(d2ptUrl('vengefulspirit'), 'https://dota2protracker.com/hero/Vengeful%20Spirit')
+  assert.equal(d2ptUrl('nope'), 'https://dota2protracker.com/')
+  assert.equal(Object.keys(HERO_NAMES_EN).length, 127)
 })
