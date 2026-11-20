@@ -47,7 +47,7 @@ class DesktopDataLoaderTest {
         loader.run(null);   // 第二次启动：重导不能重复插入
 
         assertEquals(127, jdbc.queryForObject("SELECT COUNT(*) FROM hero", Integer.class));
-        assertEquals(795, jdbc.queryForObject("SELECT COUNT(*) FROM hero_skill", Integer.class));
+        assertEquals(798, jdbc.queryForObject("SELECT COUNT(*) FROM hero_skill", Integer.class));
         assertEquals("主宰", jdbc.queryForObject("SELECT name FROM hero WHERE slug = 'juggernaut'", String.class));
 
         // 复盘模块用到的 MySQL 写法在 H2 的 MySQL 模式下也要能跑

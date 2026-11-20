@@ -16,7 +16,7 @@ const path = require('path')
 const URL = 'https://www.dota2.com/datafeed/itemlist?language=schinese'
 const OUT = path.join(__dirname, 'items_cn.sql')
 
-const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+const esc = (s) => String(s).replace(/'/g, "''")  // 标准 SQL 转义，MySQL 和 H2 都认
 
 async function main() {
 const res = await fetch(URL)

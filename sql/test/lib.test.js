@@ -78,20 +78,25 @@ describe('findValue', () => {
 
 describe('applyManual', () => {
   test('命中片段时整段替换（字面量取自 REPLACE_MANUAL，别手抄）', () => {
-    const out = applyManual('主宰', '剑刃风暴', '神杖', '主宰每%attack_interval%秒对作用的敌人发动一次攻击');
-    assert.equal(out, '主宰每隔数秒就会对作用范围内的敌人发动一次攻击');
+    const out = applyManual('雷泽', '静电连接', '魔晶', '数值为连接生效时%move_speed_factor%倍的攻击力窃取量');
+    assert.equal(out, '减速效果与攻击力窃取量成正比');
   });
 
   test('片段里有 %%% 也能命中（沙王魔晶那条）', () => {
-    const out = applyManual('沙王', '尾刺', '魔晶', '造成%caustic_damage_pct%%%伤害');
+    const out = applyManual('沙王', '尾螫', '魔晶', '造成%caustic_damage_pct%%%伤害');
     assert.equal(out, '造成额外百分比伤害');
   });
 
   test('片段没命中就抛错（官网改文案后会立刻暴露，不会静默留下死占位符）', () => {
     assert.throws(
-      () => applyManual('主宰', '剑刃风暴', '神杖', '官网把这句话改了'),
+      () => applyManual('雷泽', '静电连接', '魔晶', '官网把这句话改了'),
       /REPLACE_MANUAL 片段未命中/
     );
+  });
+
+  test('基础技能描述也能改写（key 第三段写"描述"）', () => {
+    const out = applyManual('电炎绝手', '血盆大口', '描述', '单位停留在他肚子里最多可达%max_time_in_belly%秒。');
+    assert.equal(out, '单位在他肚子里只能停留数秒。');
   });
 
   test('没有配置改写的技能原样返回', () => {
@@ -101,9 +106,9 @@ describe('applyManual', () => {
   test('文本为空时原样返回，不抛错', () => {
     // 空值直接穿透：调用方（buildSkills / scanTokens）都用 `if (!txt)` 挡在前面，
     // 所以这里不把 null 统一成 '' —— 保持「原样进、原样出」更不容易骗到调用方。
-    assert.equal(applyManual('主宰', '剑刃风暴', '神杖', ''), '');
-    assert.equal(applyManual('主宰', '剑刃风暴', '神杖', null), null);
-    assert.equal(applyManual('主宰', '剑刃风暴', '神杖', undefined), undefined);
+    assert.equal(applyManual('雷泽', '静电连接', '魔晶', ''), '');
+    assert.equal(applyManual('雷泽', '静电连接', '魔晶', null), null);
+    assert.equal(applyManual('雷泽', '静电连接', '魔晶', undefined), undefined);
   });
 });
 
