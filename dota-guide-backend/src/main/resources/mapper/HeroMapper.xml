@@ -231,12 +231,13 @@
         ORDER BY s.sort_order
     </select>
 
-    <!-- 复盘模块用：一次查出一场比赛里 10 个英雄的基本信息（不带技能） -->
-    <select id="findByIds" resultType="com.dota.guide.entity.Hero">
+    <!-- 复盘模块用：按 slug 一次查出一场比赛里 10 个英雄的基本信息（不带技能）。
+         用 slug 而不是 id：本站 hero.id 是官网列表序号，和游戏内 hero_id 不是一套编号 -->
+    <select id="findBySlugs" resultType="com.dota.guide.entity.Hero">
         SELECT <include refid="heroColumns"><property name="alias" value=""/></include>
         FROM hero
-        WHERE id IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        WHERE slug IN
+        <foreach collection="slugs" item="s" open="(" separator="," close=")">#{s}</foreach>
     </select>
 
 </mapper>

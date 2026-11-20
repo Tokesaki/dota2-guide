@@ -129,6 +129,26 @@ public class OpenDotaService {
         return catalog;
     }
 
+    /**
+     * 游戏内英雄 id → 英文内部名（slug），如 33 → enigma。
+     *
+     * ⚠️ 本站 hero 表的 id 是按官网列表顺序排的序号，**不是**游戏内的 hero_id
+     * （只有前几个碰巧相同，从影魔/变体精灵开始就错开了）。两边唯一稳定的对应关系是 slug：
+     * OpenDota 的英雄名是 npc_dota_hero_enigma，本站 slug 是 enigma。
+     * 所以比赛里的 hero_id 一律先翻成 slug，再去本站查英雄。
+     */
+    public Map<Integer, String> heroSlugs() {
+        JsonNode heroes = cached("constants:heroes", CONSTANTS_TTL, "/constants/heroes");
+        Map<Integer, String> map = new HashMap<>();
+        heroes.forEach(h -> {
+            String name = h.path("name").asText("");
+            if (h.hasNonNull("id") && name.startsWith("npc_dota_hero_")) {
+                map.put(h.get("id").asInt(), name.substring("npc_dota_hero_".length()));
+            }
+        });
+        return map;
+    }
+
     /** 比赛是否被 OpenDota 解析过（解析过才有出装时间、分路、补刀曲线） */
     public static boolean isParsed(JsonNode match) {
         return match != null && match.hasNonNull("version");

@@ -262,7 +262,11 @@ public class ReviewService {
         if (hero == null) {
             throw new ReviewException(404, "英雄不存在（" + key + "）");
         }
-        int heroId = hero.getId().intValue();
+        Integer gameId = gameIdOf(hero);
+        if (gameId == null) {
+            throw new ReviewException(404, "OpenDota 上找不到这个英雄（" + key + "）");
+        }
+        int heroId = gameId;   // meta_build 和 OpenDota 用的都是游戏内 hero_id
         ItemCatalog catalog = safeCatalog();
 
         List<BuildStats.BuildRow> rows = reviewMapper.findBuilds(heroId,
@@ -305,14 +309,46 @@ public class ReviewService {
         }
     }
 
-    private Map<Long, Hero> loadHeroes(Set<Long> ids) {
+    /**
+     * 游戏内 hero_id → 本站英雄。经过 slug 中转（见 OpenDotaService.heroSlugs 的说明）。
+     * OpenDota 不认识的新英雄、本站还没收录的英雄查不到，调用方按"英雄 #id"显示。
+     */
+    private Map<Long, Hero> loadHeroes(Set<Long> gameIds) {
         Map<Long, Hero> map = new HashMap<>();
-        if (!ids.isEmpty()) {
-            for (Hero h : heroMapper.findByIds(ids)) {
-                map.put(h.getId(), h);
+        if (gameIds.isEmpty()) {
+            return map;
+        }
+        Map<Integer, String> slugs;
+        try {
+            slugs = od.heroSlugs();
+        } catch (ReviewException e) {
+            log.warn("英雄编号表加载失败：{}", e.getMessage());
+            return map;
+        }
+        Map<String, Long> slugToGameId = new HashMap<>();
+        for (long id : gameIds) {
+            String slug = slugs.get((int) id);
+            if (slug != null) {
+                slugToGameId.put(slug, id);
             }
         }
+        if (slugToGameId.isEmpty()) {
+            return map;
+        }
+        for (Hero h : heroMapper.findBySlugs(slugToGameId.keySet())) {
+            map.put(slugToGameId.get(h.getSlug()), h);
+        }
         return map;
+    }
+
+    /** 本站英雄 → 游戏内 hero_id；查不到返回 null */
+    private Integer gameIdOf(Hero h) {
+        for (Map.Entry<Integer, String> e : od.heroSlugs().entrySet()) {
+            if (e.getValue().equals(h.getSlug())) {
+                return e.getKey();
+            }
+        }
+        return null;
     }
 
     /** 本站图鉴里没有的英雄（新英雄还没补数据）也能显示，只是没有中文名和建议 */
@@ -320,7 +356,7 @@ public class ReviewService {
         if (h == null) {
             return new HeroBrief(heroId, "英雄 #" + heroId, null, null, null, null, null, null, null);
         }
-        return new HeroBrief(h.getId(), h.getName(), h.getSlug(), h.getAvatar(), h.getAttr(),
+        return new HeroBrief(heroId, h.getName(), h.getSlug(), h.getAvatar(), h.getAttr(),
                 h.getPos(), h.getTips(), h.getItems(), h.getCounters());
     }
 
