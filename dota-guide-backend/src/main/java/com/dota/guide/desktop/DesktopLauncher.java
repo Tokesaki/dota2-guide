@@ -22,7 +22,8 @@ public final class DesktopLauncher {
         int port = Integer.parseInt(System.getenv().getOrDefault("DESKTOP_PORT", "17788"));
         if (alreadyRunning(port)) {
             DesktopShell.openBrowser("http://localhost:" + port + "/");
-            return;
+            // 打开浏览器会顺带启动 AWT 的后台线程，不显式退出的话这个"第二份"进程会一直挂着
+            System.exit(0);
         }
         List<String> rest = new ArrayList<>();
         for (String a : args) {
