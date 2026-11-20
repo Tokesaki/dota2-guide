@@ -7,7 +7,7 @@
 --
 -- 标签含义（"打架"按用户的定义）：
 --   打架：数值撑得起前期高强度打架，不靠刷钱也能参团。典型是小骷髅：两个吃兵、隐身找人，
---         刷得不快，所以是打架核；美杜莎这种靠后期装备的不算
+--         刷得不快，所以是打架核；美杜莎、琼英碧灵（奶绿）这种没装备就很弱的不算
 --   发育：要时间刷钱，装备成型后才发力
 --
 -- 每个英雄 1~2 个标签，逗号分隔，第一个是主要打法。按 slug 对应 hero 表，
@@ -94,7 +94,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('ancient_apparition', '打架'),
 ('ursa', '打架,抓人'),
 ('spirit_breaker', '抓人'),
-('gyrocopter', '打架,发育'),
+('gyrocopter', '发育,打架'),
 ('alchemist', '发育,推进'),
 ('invoker', '打架,带线'),
 ('silencer', '打架'),
@@ -147,7 +147,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('dawnbreaker', '打架'),
 ('marci', '抓人,打架'),
 ('primal_beast', '打架'),
-('muerta', '打架,发育'),
+('muerta', '发育'),
 ('ringmaster', '抓人,打架'),
 ('kez', '抓人,发育'),
 ('largo', '打架,保人');
