@@ -7,7 +7,7 @@
 --
 -- 标签含义（"打架"按用户的定义）：
 --   打架：数值撑得起前期高强度打架，不靠刷钱也能参团。典型是小骷髅：两个吃兵、隐身找人，
---         刷得不快，所以是打架核；美杜莎、琼英碧灵（奶绿）这种没装备就很弱的不算
+--         刷得不快，所以是打架核；全球流（幽鬼、先知这种能快速支援战场的）也算打架；美杜莎、琼英碧灵（奶绿）这种没装备就很弱的不算
 --   发育：要时间刷钱，装备成型后才发力
 --
 -- 每个英雄 1~2 个标签，逗号分隔，第一个是主要打法。按 slug 对应 hero 表，
@@ -75,7 +75,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('dazzle', '保人'),
 ('rattletrap', '抓人,打架'),
 ('leshrac', '推进,打架'),
-('furion', '带线,推进'),
+('furion', '带线,打架'),
 ('life_stealer', '打架'),
 ('dark_seer', '打架,发育'),
 ('clinkz', '打架,抓人'),
@@ -89,7 +89,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('jakiro', '推进,打架'),
 ('batrider', '抓人,打架'),
 ('chen', '推进,保人'),
-('spectre', '发育'),
+('spectre', '打架,发育'),
 ('doom_bringer', '打架,发育'),
 ('ancient_apparition', '打架'),
 ('ursa', '打架,抓人'),
@@ -116,7 +116,7 @@ INSERT INTO hero_style (slug, styles) VALUES
 ('wisp', '保人'),
 ('visage', '推进,抓人'),
 ('slark', '抓人,发育'),
-('medusa', '发育,带线'),
+('medusa', '发育'),
 ('troll_warlord', '推进,打架'),
 ('centaur', '打架'),
 ('magnataur', '打架'),
