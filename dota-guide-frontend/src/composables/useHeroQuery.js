@@ -51,7 +51,8 @@ export function useHeroQuery() {
     role: '',
     pos: '',
     attr: '',
-    complexity: ''
+    complexity: '',
+    style: ''          // 打法标签（打架/推进/带线/抓人/发育/保人），后端模糊匹配
   })
 
   // ---------- 页码：**不对外暴露** ----------

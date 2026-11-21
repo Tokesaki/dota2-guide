@@ -66,4 +66,10 @@ public interface HeroMapper {
      * @return 英雄 + 技能列表；查无此人时返回 null
      */
     HeroDetailVO findByKey(@Param("key") String key, @Param("numericKey") Long numericKey);
+
+    /**
+     * 按一组 slug 查英雄基本信息（不带技能），复盘模块用来把比赛里的英雄翻成中文名、头像、号位等。
+     * ⚠️ 不能按 id 查：hero.id 是官网列表序号，和游戏内 / OpenDota 的 hero_id 不是一套编号。
+     */
+    List<Hero> findBySlugs(@Param("slugs") java.util.Collection<String> slugs);
 }

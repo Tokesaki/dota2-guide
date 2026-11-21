@@ -1,0 +1,218 @@
+package com.dota.guide.review;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * OpenDotaService —— 带缓存的 OpenDota 数据访问
+ *
+ * OpenDota 免费额度大约每分钟 60 次、每天 2000 次，所以除了"拉高分局样本"之外，
+ * 所有请求都先查 od_cache 表，没过期就直接用缓存。各类数据的过期时间：
+ *
+ *   比赛详情（已解析）  永不过期 —— 比赛打完数据就不会再变
+ *   比赛详情（未解析）  10 分钟  —— 请求解析后过一会儿再拉，就能拿到详细时间线
+ *   最近比赛列表        5 分钟
+ *   物品常量            7 天
+ *   英雄出装热度        1 天
+ *   职业比赛出装        6 小时
+ */
+@Service
+public class OpenDotaService {
+
+    private static final Duration UNPARSED_TTL = Duration.ofMinutes(10);
+    private static final Duration RECENT_TTL = Duration.ofMinutes(5);
+    private static final Duration CONSTANTS_TTL = Duration.ofDays(7);
+    private static final Duration POPULARITY_TTL = Duration.ofDays(1);
+    private static final Duration PARSE_REQUEST_COOLDOWN = Duration.ofMinutes(30);
+    private static final Duration PRO_TTL = Duration.ofHours(6);
+    /** 职业比赛最多取最近多少场 */
+    static final int PRO_LIMIT = 40;
+
+    private final OpenDotaClient client;
+    private final ReviewMapper mapper;
+    private final ObjectMapper json;
+
+    /** 物品字典放内存里，一天重建一次 */
+    private volatile ItemCatalog catalog;
+    private volatile LocalDateTime catalogBuiltAt;
+
+    public OpenDotaService(OpenDotaClient client, ReviewMapper mapper, ObjectMapper json) {
+        this.client = client;
+        this.mapper = mapper;
+        this.json = json;
+    }
+
+    /** 比赛详情 */
+    public JsonNode match(long matchId) {
+        String key = "match:" + matchId;
+        ReviewMapper.CacheRow row = mapper.findCache(key);
+        if (row != null) {
+            JsonNode cached = parse(row.body);
+            if (isParsed(cached) || fresh(row, UNPARSED_TTL)) {
+                return cached;
+            }
+        }
+        String body = client.get("/matches/" + matchId);
+        JsonNode node = parse(body);
+        if (!node.has("players")) {
+            throw new ReviewException(404, "找不到比赛 " + matchId);
+        }
+        mapper.saveCache(key, body);
+        return node;
+    }
+
+    /** 不走缓存的比赛详情（高分局样本只用一次，没必要占缓存表） */
+    public JsonNode matchUncached(long matchId) {
+        return parse(client.get("/matches/" + matchId));
+    }
+
+    /** 玩家最近 20 场 */
+    public JsonNode recentMatches(long accountId) {
+        return cached("recent:" + accountId, RECENT_TTL, "/players/" + accountId + "/recentMatches");
+    }
+
+    /** 玩家资料（昵称、头像、段位） */
+    public JsonNode player(long accountId) {
+        return cached("player:" + accountId, Duration.ofHours(6), "/players/" + accountId);
+    }
+
+    /** 英雄各阶段出装热度（全分段，不分高低分） */
+    public JsonNode itemPopularity(int heroId) {
+        return cached("itempop:" + heroId, POPULARITY_TTL, "/heroes/" + heroId + "/itemPopularity");
+    }
+
+    /** 高分局公开比赛列表（不缓存，每次都要新的） */
+    public JsonNode publicMatches(int minRank) {
+        return parse(client.get("/publicMatches?min_rank=" + minRank));
+    }
+
+    /**
+     * 某英雄在职业比赛里的最近出场（OpenDota Explorer：直接对它的职业比赛库跑 SQL）。
+     * 一次请求就能拿到几十场的最终出装、选手名、联赛名，比一场场拉详情省额度得多。
+     *
+     * @param since 只要这个时间（Unix 秒）之后的比赛，一般传当前版本的更新时间
+     * @return 行数组，每行 match_id / start_time / duration / win / item_0..5 / item_neutral /
+     *         kills / deaths / assists / lane_role / player / league
+     */
+    public JsonNode proGames(int heroId, long since) {
+        String key = "pro:" + heroId + ":" + since;
+        ReviewMapper.CacheRow row = mapper.findCache(key);
+        if (row != null && fresh(row, PRO_TTL)) {
+            return parse(row.body);
+        }
+        // SQL 直接放进 URL：RestClient 会按 URI 规则编码空格、尖括号等；
+        // 注意别写 + 和 & 这两个字符（会被当成空格和参数分隔符）
+        String sql = "SELECT m.match_id, m.start_time, m.duration, (pm.player_slot < 128) = m.radiant_win AS win,"
+                + " pm.item_0, pm.item_1, pm.item_2, pm.item_3, pm.item_4, pm.item_5, pm.item_neutral,"
+                + " pm.kills, pm.deaths, pm.assists, pm.lane_role, np.name AS player, l.name AS league"
+                + " FROM player_matches pm JOIN matches m USING (match_id)"
+                + " LEFT JOIN notable_players np ON np.account_id = pm.account_id"
+                + " LEFT JOIN leagues l ON l.leagueid = m.leagueid"
+                + " WHERE pm.hero_id = " + heroId + " AND m.start_time > " + since
+                + " ORDER BY m.start_time DESC LIMIT " + PRO_LIMIT;
+        JsonNode resp = parse(client.get("/explorer?sql=" + sql));
+        if (resp.hasNonNull("err") || !resp.path("rows").isArray()) {
+            throw new ReviewException(502, "OpenDota 职业比赛查询失败");
+        }
+        // 只缓存 rows：Explorer 的返回里还带着一大段字段类型说明，用不上
+        String rows = resp.get("rows").toString();
+        mapper.saveCache(key, rows);
+        return resp.get("rows");
+    }
+
+    /**
+     * 请求 OpenDota 解析比赛录像。同一场 30 分钟内只发一次，避免浪费额度。
+     *
+     * @return true = 这次真的发出了请求；false = 最近已经请求过
+     */
+    public boolean requestParse(long matchId) {
+        String key = "parsereq:" + matchId;
+        ReviewMapper.CacheRow row = mapper.findCache(key);
+        if (row != null && fresh(row, PARSE_REQUEST_COOLDOWN)) {
+            return false;
+        }
+        String body = client.post("/request/" + matchId);
+        mapper.saveCache(key, body.isEmpty() ? "{}" : body);
+        return true;
+    }
+
+    /** 最近 30 分钟内是否请求过解析 */
+    public boolean parseRequestedRecently(long matchId) {
+        ReviewMapper.CacheRow row = mapper.findCache("parsereq:" + matchId);
+        return row != null && fresh(row, PARSE_REQUEST_COOLDOWN);
+    }
+
+    public ItemCatalog catalog() {
+        LocalDateTime built = catalogBuiltAt;
+        if (catalog == null || built == null || built.isBefore(LocalDateTime.now().minusDays(1))) {
+            synchronized (this) {
+                if (catalog == null || catalogBuiltAt.isBefore(LocalDateTime.now().minusDays(1))) {
+                    Map<Integer, String> cn = new HashMap<>();
+                    for (ReviewMapper.ItemCn r : mapper.findItemCn()) {
+                        cn.put(r.itemId, r.nameCn);
+                    }
+                    JsonNode constants = cached("constants:items", CONSTANTS_TTL, "/constants/items");
+                    catalog = ItemCatalog.fromOpenDota(constants, cn);
+                    catalogBuiltAt = LocalDateTime.now();
+                }
+            }
+        }
+        return catalog;
+    }
+
+    /**
+     * 游戏内英雄 id → 英文内部名（slug），如 33 → enigma。
+     *
+     * ⚠️ 本站 hero 表的 id 是按官网列表顺序排的序号，**不是**游戏内的 hero_id
+     * （只有前几个碰巧相同，从影魔/变体精灵开始就错开了）。两边唯一稳定的对应关系是 slug：
+     * OpenDota 的英雄名是 npc_dota_hero_enigma，本站 slug 是 enigma。
+     * 所以比赛里的 hero_id 一律先翻成 slug，再去本站查英雄。
+     */
+    public Map<Integer, String> heroSlugs() {
+        JsonNode heroes = cached("constants:heroes", CONSTANTS_TTL, "/constants/heroes");
+        Map<Integer, String> map = new HashMap<>();
+        heroes.forEach(h -> {
+            String name = h.path("name").asText("");
+            if (h.hasNonNull("id") && name.startsWith("npc_dota_hero_")) {
+                map.put(h.get("id").asInt(), name.substring("npc_dota_hero_".length()));
+            }
+        });
+        return map;
+    }
+
+    /** 比赛是否被 OpenDota 解析过（解析过才有出装时间、分路、补刀曲线） */
+    public static boolean isParsed(JsonNode match) {
+        return match != null && match.hasNonNull("version");
+    }
+
+    // ---------- 内部工具 ----------
+
+    private JsonNode cached(String key, Duration ttl, String path) {
+        ReviewMapper.CacheRow row = mapper.findCache(key);
+        if (row != null && fresh(row, ttl)) {
+            return parse(row.body);
+        }
+        String body = client.get(path);
+        mapper.saveCache(key, body);
+        return parse(body);
+    }
+
+    private static boolean fresh(ReviewMapper.CacheRow row, Duration ttl) {
+        return row.fetchedAt != null && row.fetchedAt.isAfter(LocalDateTime.now().minus(ttl));
+    }
+
+    private JsonNode parse(String body) {
+        try {
+            return json.readTree(body);
+        } catch (JsonProcessingException e) {
+            throw new ReviewException(502, "OpenDota 返回的数据格式不对");
+        }
+    }
+}

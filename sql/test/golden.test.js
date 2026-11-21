@@ -123,9 +123,9 @@ describe('golden：生成器输出 == 已发布的 SQL 文件', { skip: hasRawDa
   // 下面几条被上面的逐字节对比蕴含，但独立的断言能在失败时直接指出「哪个数字变了」，
   // 不用去 diff 二十万字节的输出。
 
-  test('英雄 127 名、技能 795 行', () => {
+  test('英雄 127 名、技能 798 行（7.42）', () => {
     assert.equal(heroes.rows.length, 127);
-    assert.equal(skills.rows.length, 795);
+    assert.equal(skills.rows.length, 798);
   });
 
   test('slug 唯一且不为空（fresh-install 那个坑的守卫）', () => {

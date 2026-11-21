@@ -152,7 +152,7 @@ function buildSkills({ heroList, heroDataByName, heroRows }) {
     const baseNames = new Set(base.map(a => a.name_loc));
 
     base.forEach((a, i) => {
-      const desc = cleanText(a.desc_loc, a.special_values);
+      const desc = cleanText(applyManual(d.name_loc, a.name_loc, '描述', a.desc_loc), a.special_values);
       push({
         heroId, key: KEYS[i] || '', type: typeOf(a), category: '基础',
         innate: a.ability_is_innate ? 1 : 0,
@@ -168,7 +168,7 @@ function buildSkills({ heroList, heroDataByName, heroRows }) {
       if (!g) continue;
       // 异常：一个技能同时是魔晶和神杖新增（正常不会发生）
       if (a.ability_is_granted_by_shard && a.ability_is_granted_by_scepter) review.grantedBoth.push(d.name_loc + '/' + a.name_loc);
-      const desc = cleanText(a.desc_loc, a.special_values);
+      const desc = cleanText(applyManual(d.name_loc, a.name_loc, '描述', a.desc_loc), a.special_values);
       push({
         heroId, key: g === 'shard' ? 'D' : 'F', type: typeOf(a),
         category: g === 'shard' ? '魔晶新增' : '神杖新增',
@@ -248,7 +248,7 @@ function scanTokens({ heroList, heroDataByName }) {
     const d = heroDataByName.get(h.name_loc);
     for (const a of d.abilities) {
       const checks = [
-        ['desc', a.desc_loc, null],
+        ['desc', applyManual(d.name_loc, a.name_loc, '描述', a.desc_loc), null],
         ['魔晶', applyManual(d.name_loc, a.name_loc, '魔晶', a.shard_loc), 'shard'],
         ['神杖', applyManual(d.name_loc, a.name_loc, '神杖', a.scepter_loc), 'scepter'],
       ];

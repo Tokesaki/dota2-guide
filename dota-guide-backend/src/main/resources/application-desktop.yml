@@ -1,0 +1,33 @@
+# ============================================================
+# 本地软件模式（desktop profile）
+#
+# 用法：java -jar dota-guide-backend.jar --desktop
+#   （打好的 Windows 程序双击时会自动带上 --desktop）
+#
+# 和开发模式的区别：
+#   - 数据库换成 H2 内嵌数据库，数据存在 用户目录/.dota2-review/ 下，不用装 MySQL；
+#   - 前端页面由后端直接托管，只开一个端口；
+#   - 只监听本机（127.0.0.1），局域网里的其他电脑访问不到；
+#   - 启动后自动打开浏览器，托盘图标里可以退出。
+# ============================================================
+server:
+  port: ${DESKTOP_PORT:17788}
+  address: 127.0.0.1
+
+spring:
+  datasource:
+    # MODE=MySQL：让 H2 认 MySQL 的写法（反引号、ON DUPLICATE KEY UPDATE、INSERT IGNORE……）
+    # DATABASE_TO_LOWER / CASE_INSENSITIVE_IDENTIFIERS：表名列名大小写和 MySQL 一样不敏感
+    url: jdbc:h2:file:${user.home}/.dota2-review/data;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=FALSE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+mybatis:
+  configuration:
+    # 本地软件不需要把每条 SQL 打出来
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  file:
+    name: ${user.home}/.dota2-review/app.log

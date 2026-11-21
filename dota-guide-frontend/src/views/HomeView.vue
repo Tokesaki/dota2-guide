@@ -36,7 +36,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 // lucide 图标：全站 emoji 统一换成 SVG 图标库
 import { Target, Library, Eraser, SearchX, CircleX } from 'lucide-vue-next'
 // useRouter：编程式导航（用代码跳转页面）
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 // 自己封装的 API 函数（见 api/hero.js）—— 只给"新手推荐区"用
 import { getHeroList } from '../api/hero'
 // 全站共享常量：更新日期四页统一取这里
@@ -46,8 +46,11 @@ import { UPDATE_DATE } from '../constants'
 import { useHeroQuery } from '../composables/useHeroQuery'
 // 值 → 标识的映射（主属性色 token 等）
 import { attrToken } from '../domain/vocab'
+// 打法标签（7.42 版本环境整理）
+import { STYLES, STYLE_HINTS, splitStyles } from '../domain/hero'
 
 const router = useRouter()
+const route = useRoute()
 
 // ---------- 列表查询状态（全部来自 composable） ----------
 // list 重命名成 heroes：模板里 8 处都叫 heroes，改名会让 diff 全是噪音
@@ -104,6 +107,8 @@ async function loadRecommended() {
 // 组件挂载完成后自动加载：推荐区 + 英雄列表第一页
 onMounted(() => {
   loadRecommended()
+  // 从"版本环境"页点打法标签过来时带着 ?style=打架，先套上这个筛选
+  if (typeof route.query.style === 'string') filters.style = route.query.style
   search()
 })
 
@@ -222,6 +227,18 @@ function goDetail(hero) {
             <i v-for="n in 3" :key="n" :class="{ on: n <= c.level }"></i>
           </span></button>
       </div>
+      <!-- 打法页签：打架/推进/带线/抓人/发育/保人（数据在 sql/hero_style.sql，按 7.42 环境整理） -->
+      <div class="tab-group">
+        <span class="group-label">打法</span>
+        <button
+          v-for="st in STYLES"
+          :key="st"
+          class="tab-btn"
+          :title="STYLE_HINTS[st]"
+          :class="{ active: filters.style === st }"
+          @click="pickTab('style', st)"
+        >{{ st }}</button>
+      </div>
       <!-- 搜索框（@input 即时搜索 + 300ms 防抖，没有搜索按钮）+ 定位/号位下拉框 -->
       <div class="filter-row">
         <input
@@ -328,6 +345,7 @@ function goDetail(hero) {
                  攻击方式和难度点都已移到头像下面，这一行现在只剩定位标签 -->
             <div class="card-tags">
               <span class="role-tag">{{ hero.role }}</span>
+              <span v-for="st in splitStyles(hero.styles)" :key="st" class="style-tag" :title="STYLE_HINTS[st]">{{ st }}</span>
             </div>
             <p class="hero-intro">{{ hero.intro }}</p>
           </div>
@@ -797,6 +815,14 @@ function goDetail(hero) {
 
 /* 定位标签：小圆角胶囊，统一中性灰描边（用户要求：
    红绿蓝紫只留给主属性标签，定位标签不再各自配色） */
+.style-tag {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  background: var(--gold-tint);
+}
 .role-tag {
   font-size: 12px;
   padding: 2px 10px;

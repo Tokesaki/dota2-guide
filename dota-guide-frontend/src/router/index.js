@@ -8,6 +8,9 @@ import HomeView from '../views/HomeView.vue'
 import HeroDetailView from '../views/HeroDetailView.vue'
 import GuideView from '../views/GuideView.vue'
 import AdvancedView from '../views/AdvancedView.vue'
+import MetaView from '../views/MetaView.vue'
+import ReviewView from '../views/ReviewView.vue'
+import MatchReviewView from '../views/MatchReviewView.vue'
 
 // 路由表：一个对象 = 一条路由规则
 const routes = [
@@ -46,6 +49,23 @@ const routes = [
     path: '/advanced',    // 进阶页：久远Vortex 四篇教学 PDF 的总结，纯静态
     name: 'advanced',
     component: AdvancedView
+  },
+  {
+    path: '/meta',        // 版本环境：当前版本对节奏影响最大的通用改动 + 打法解读，纯静态
+    name: 'meta',
+    component: MetaView
+  },
+  {
+    path: '/review',      // 比赛复盘入口：输入好友代码看最近比赛，或直接输入比赛编号
+    name: 'review',
+    component: ReviewView
+  },
+  {
+    // 单场复盘。(\\d+) 限定只认数字，/review/abc 不会进来
+    path: '/review/:matchId(\\d+)',
+    name: 'match-review',
+    component: MatchReviewView,
+    props: (route) => ({ matchId: route.params.matchId })
   }
 ]
 

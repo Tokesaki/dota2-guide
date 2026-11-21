@@ -1,0 +1,90 @@
+# ============================================================
+# 打包"本地软件"（Windows 免安装版）
+#
+# 产物：Dota2Review-windows.zip —— 解压后双击 Dota2Review.exe 即可，
+#       自带精简版 Java 运行环境和内置数据库，电脑上不需要装 Java / MySQL / Node。
+#
+# 触发：
+#   - 手动：GitHub 仓库页 → Actions → "Build desktop app" → Run workflow
+#   - 推送到 main，或开/更新 PR：构建完在这次运行的 Artifacts 里下载
+#   - 推送 v 开头的 tag（如 v1.0.0）：额外发布成 GitHub Release
+# ============================================================
+name: Build desktop app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build frontend
+        working-directory: dota-guide-frontend
+        # package-lock.json 里记的是 npmmirror 镜像地址，CI 在海外，换回官方源更快
+        run: |
+          npm ci --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=registry.npmmirror.com
+          npm test
+          npx vite build
+
+      - name: Copy frontend into backend
+        run: |
+          rm -rf dota-guide-backend/src/main/resources/static
+          cp -r dota-guide-frontend/dist dota-guide-backend/src/main/resources/static
+
+      - name: Build backend jar
+        working-directory: dota-guide-backend
+        # 项目自带的 .mvn/settings.xml 指向阿里云镜像（给国内用的），CI 在海外，用一份空配置走 Maven 中央仓库。
+        # 只跑不需要数据库的单元测试；集成测试要 MySQL，CI 上没有。
+        run: |
+          echo '<settings/>' > ../ci-settings.xml
+          mvn -B -s ../ci-settings.xml test -Dtest=ReviewLogicTest,DesktopDataLoaderTest
+          mvn -B -s ../ci-settings.xml -DskipTests package
+
+      - name: Package with jpackage
+        run: |
+          mkdir -p build/in
+          cp dota-guide-backend/target/dota-guide-backend-*.jar build/in/app.jar
+          jpackage --type app-image --name Dota2Review --app-version 1.0.0 \
+            --vendor "dota2-guide" \
+            --input build/in --main-jar app.jar \
+            --java-options "-Xmx512m -Ddesktop.mode=true" \
+            --dest dist-desktop \
+            --add-modules java.base,java.desktop,java.sql,java.naming,java.management,java.instrument,java.logging,java.xml,java.net.http,java.scripting,java.security.jgss,java.compiler,jdk.unsupported,jdk.crypto.ec,jdk.zipfs,jdk.localedata,jdk.charsets \
+            --jlink-options "--strip-debug --no-man-pages --no-header-files --compress=zip-6"
+          cp desktop/README.txt dist-desktop/Dota2Review/使用说明.txt
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist-desktop/Dota2Review -DestinationPath Dota2Review-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Dota2Review-windows
+          path: Dota2Review-windows.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" Dota2Review-windows.zip --title "${GITHUB_REF_NAME}" --notes "解压后双击 Dota2Review.exe"

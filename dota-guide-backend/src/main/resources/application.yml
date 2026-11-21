@@ -9,6 +9,11 @@ server:
   port: 8080
 
 spring:
+  # 录像深度解析允许手动上传 .dem 录像，一场 100~200 MB
+  servlet:
+    multipart:
+      max-file-size: 600MB
+      max-request-size: 600MB
   datasource:
     # JDBC 连接串（jdbc:mysql://主机:端口/数据库名?参数1&参数2...）
     # 参数逐个解释：
@@ -45,3 +50,36 @@ mybatis:
     # 把 MyBatis 实际执行的 SQL 打印到控制台：
     # 对新手学习 SQL 和排查问题非常有帮助，上线前记得改成其他实现或删除
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# ============================================================
+# 比赛复盘模块（数据来自 OpenDota）
+# ============================================================
+review:
+  opendota:
+    base-url: https://api.opendota.com/api
+    # 可选：OpenDota 的 API Key（https://www.opendota.com/api-keys），不填用免费额度
+    # （约每分钟 60 次、每天 2000 次）。建议用环境变量传入，不要提交到仓库：
+    #   OPENDOTA_API_KEY=xxx ./mvnw spring-boot:run
+    api-key: ${OPENDOTA_API_KEY:}
+    # 两次请求之间至少间隔多少毫秒（免费额度每分钟 60 次，1100 刚好不超）
+    min-interval-ms: 1100
+  # 当前游戏版本：高分局样本和职业比赛出装都只统计这个时间之后的比赛。
+  # 出新版本时改这两项（start 是更新当天的 Unix 秒，北京时间 2026-11-18 16:00 = 1794988800）
+  patch:
+    name: "7.42"
+    start: 1794988800
+  # 录像深度解析：下载 / 上传的录像临时放在 work-dir，解析完就删；
+  # extra-dirs 可以额外指定放 .dem 录像的文件夹（逗号分隔），Steam 里的 Dota 录像文件夹会自动找
+  replay:
+    work-dir: ${user.home}/.dota2-review/replays
+    extra-dirs:
+  meta:
+    # 是否定时采集高分局出装样本
+    enabled: true
+    # 高分局的段位门槛：OpenDota rank_tier，80 = 冠绝一世
+    min-rank: 80
+    # 每轮最多拉几场比赛详情（每轮 1 + 25 次请求，一天约 620 次，复盘页还剩足够额度）
+    matches-per-run: 25
+    # 每轮间隔（毫秒），默认 1 小时；启动后 1 分钟跑第一轮
+    interval-ms: 3600000
+    initial-delay-ms: 60000

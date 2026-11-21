@@ -2,7 +2,7 @@
 
 面向从《英雄联盟》《王者荣耀》转过来的 Dota 2 新手的入门教学网站。
 
-英雄与技能数据全部对齐 **dota2.com 官网**（127 名英雄 / 795 条技能），并补充官网没有的
+英雄与技能数据全部对齐 **dota2.com 官网**（127 名英雄 / 798 条技能，7.42 版本），并补充官网没有的
 **新手打法建议、装备推荐、克制关系、1–5 号位教学**。
 
 ## 功能特性
@@ -12,13 +12,16 @@
 - **英雄详情** —— 技能（主动/被动、魔晶/神杖、D/F 键）、装备推荐、克制关系、新手打法建议
 - **新手须知** —— 1–5 号位资源分配体系 + 与 LOL/王者的关键差异，为转学玩家准备
 - **进阶攻略** —— 对线期到中后期的运营思路（内容来源见页面内标注）
+- **比赛复盘** —— 输入 Steam 好友代码看最近比赛，或直接输入比赛编号：推测号位、GPM/补刀等和全服同英雄比的百分位、
+  出装和购买时间、和高分局出装对比、规则生成的复盘建议，再配上图鉴里这个英雄的打法建议（数据来自 [OpenDota](https://www.opendota.com)）
+- **高分局出装** —— 后端每小时采集一批冠绝段位的天梯比赛，英雄详情页显示常出大件、出场率和平均成型时间
 - **一键更新** —— `bash sql/update_all.sh` 从官网重新拉取数据并重建数据库
 
 ## 技术栈与版本
 
 | 层 | 技术 | 版本 | 说明 |
 |---|---|---|---|
-| 后端 | Java | 17 | 已在本机验证 17.0.19 |
+| 后端 | Java | 21 | 录像解析库 clarity 需要 Java 21 |
 | 后端 | Spring Boot | 3.5.16 | Boot 3 系列最终稳定版 |
 | 后端 | MyBatis | 3.0.5 | 官方适配 Boot 3.5 的版本 |
 | 数据库 | MySQL | **5.7**（实测 5.7.23） | 本项目不用窗口函数等 8.0 特性，5.7 及以上都能跑 |
@@ -84,11 +87,30 @@ XM-01/
 **请求链路**：前端 Axios → Controller（接请求）→ Service（业务）→ Mapper（SQL）→ MySQL
 → 原路返回 JSON。
 
+## 本地软件版（Windows，免安装）
+
+不想装 MySQL / JDK / Node，只想用的话：
+
+1. 在 GitHub 仓库页打开 **Actions → Build desktop app**，点最近一次成功的运行，
+   在页面底部 **Artifacts** 里下载 `Dota2Review-windows`（打了 `v` 开头的 tag 时也会发布到 Releases）
+2. 解压，双击 `Dota2Review.exe`，浏览器会自动打开 http://localhost:17788
+3. 右下角托盘图标：双击重新打开页面，右键「退出」关闭程序
+
+它和开发版是同一套代码，区别只在启动参数 `--desktop`（见 `application-desktop.yml`）：
+
+- 数据库换成 H2 内嵌数据库，存在 `用户目录/.dota2-review/`，启动时自动建表并导入英雄、技能数据；
+- 前端打包后由后端直接托管，只用一个端口，只监听本机；
+- 用 `jpackage` 带上精简版 Java 运行环境（约 100MB），电脑上不需要装 Java。
+
+自己打包：`npx vite build` → 把 `dist` 复制到 `dota-guide-backend/src/main/resources/static` →
+`./mvnw package` → `java -jar target/dota-guide-backend-*.jar --desktop` 就能本地试；
+生成 exe 的完整步骤见 [.github/workflows/desktop.yml](.github/workflows/desktop.yml)。
+
 ## 环境准备
 
 | 软件 | 要求 | 检查命令 |
 |---|---|---|
-| JDK | 17 或更高 | `java -version` |
+| JDK | 21 或更高 | `java -version` |
 | Maven | **不需要安装**（项目自带 mvnw） | — |
 | MySQL | 5.7 或更高，已启动服务（本机实测 5.7.23） | 能连上 `localhost:3306` |
 | Node.js | 18+（22.11 已验证） | `node --version` |
@@ -104,11 +126,15 @@ XM-01/
 mysql -u root -p < sql/init.sql
 ```
 
-按顺序执行 3 个脚本，**顺序不能反**：
+按顺序执行下面的脚本，**顺序不能反**：
 
 1. [sql/init.sql](sql/init.sql) —— 建库建表 + 5 条示例数据
 2. [sql/heroes_full.sql](sql/heroes_full.sql) —— 官网全部 127 名英雄
 3. [sql/skills_full.sql](sql/skills_full.sql) —— 全部 795 条技能
+
+4. [sql/review.sql](sql/review.sql) —— 比赛复盘模块的 4 张表（可重复执行，不动英雄数据）
+5. [sql/hero_style.sql](sql/hero_style.sql) —— 英雄打法标签（打架 / 推进 / 带线 / 抓人 / 发育 / 保人），**必须导入**，英雄列表会关联这张表
+6. 物品中文名：[sql/items_cn.sql](sql/items_cn.sql)（由 `node sql/download_items_cn.js` 生成，已附带 7.42 版本）；不导入时物品显示英文名
 
 > 💡 后两个脚本会先清空表再插入，可重复执行。执行完需要**重启后端**。
 >
@@ -155,7 +181,7 @@ npm run dev
 | `keyword` | string | 否 | 模糊搜索英雄名 / **俗称** / 简介，三列同时匹配；结果按"名字命中 > 俗称命中 > 简介命中"排序 |
 | `role` | string | 否 | 按官网定位模糊筛选，如 `role=核心`（核心/辅助/爆发/控制/打野/肉盾/逃生/推进/先手） |
 | `pos` | string | 否 | 按号位模糊筛选，如 `pos=3号位` |
-| `attr` | string | 否 | 按主属性**精确**筛选：`力量` / `敏捷` / `智力` / `全才`（官网数据，分布 36/35/34/22） |
+| `attr` | string | 否 | 按主属性**精确**筛选：`力量` / `敏捷` / `智力` / `全才`（官网数据，分布 36/34/34/23） |
 | `complexity` | int | 否 | 按复杂度**精确**筛选：`1` 简单 / `2` 中等 / `3` 困难（分布 55/59/13） |
 | `page` | int | 否 | 页码，默认 1（小于 1 按 1 处理） |
 | `size` | int | 否 | 每页条数，默认 24，上限 500（小于 1 按 24 处理） |
@@ -209,7 +235,7 @@ npm run dev
 
 | 字段 | 取值 | 含义 |
 |---|---|---|
-| `skillKey` | `Q`/`W`/`E`/`R`/`D`/`F` 或空串 | 按键。**空串 = 魔晶/神杖只强化已有技能，不占新按键**，D/F 只出现在新增技能上（127 英雄共 69 条：D 键 37 条、F 键 32 条） |
+| `skillKey` | `Q`/`W`/`E`/`R`/`D`/`F` 或空串 | 按键。**空串 = 魔晶/神杖只强化已有技能，不占新按键**，D/F 只出现在新增技能上（127 英雄共 70 条：D 键 39 条、F 键 31 条） |
 | `skillType` | 主动 / 被动 | 被动自动生效、无需按键 |
 | `skillCategory` | 基础 / 魔晶新增 / 神杖新增 / 魔晶强化 / 神杖强化 | 这个技能的来源，以及它是"多给一个技能位"还是"强化已有技能" |
 | `isInnate` | 1 / 0 | 先天技能（出生自带、随等级自动升级，如剑圣的剑舞）。全库 18 条 |
@@ -221,6 +247,27 @@ npm run dev
 > 前端也不必再从名字前缀或空按键去反推分类，直接读 `skillCategory` / `isInnate` 即可。
 
 404 示例：`{ "code": 404, "message": "英雄不存在（sven）", "data": null }`
+
+### 接口三：比赛复盘（数据来自 OpenDota）
+
+| 接口 | 说明 |
+|---|---|
+| `GET /api/review/players/{accountId}` | 玩家资料 + 最近 20 场。`accountId` 是 Steam 好友代码 |
+| `GET /api/review/matches/{matchId}` | 单场复盘：10 个人的数据、推测号位、百分位、出装、高分局对比、建议。比赛没被 OpenDota 解析过时会自动请求一次解析 |
+| `POST /api/review/matches/{matchId}/parse` | 手动请求解析（30 分钟内同一场只发一次） |
+| `GET /api/review/heroes/{key}/builds` | 英雄的高分局出装 + OpenDota 全分段分阶段出装热度 |
+
+几点说明：
+
+- **额度**：OpenDota 免费额度约每分钟 60 次、每天 2000 次。后端把查过的数据缓存在 `od_cache` 表
+  （已解析的比赛永久缓存），请求之间自动间隔 1.1 秒。有 API Key 的话用环境变量 `OPENDOTA_API_KEY` 传入。
+- **解析**：没解析过的比赛只有最终出装和总数据；解析后才有出装时间、分路、10 分钟补刀。
+  复盘页会提示并自动请求解析，几分钟后刷新即可。
+- **号位是推测的**：解析过的比赛按分路 + 经济推测，没解析过的只能按队内经济排名粗略推测。
+- **高分局样本**：`MetaCollector` 每小时从 `/publicMatches?min_rank=80` 拉一批天梯全英雄选择的比赛，
+  每个英雄攒够 20 场才做对比，只保留最近 30 天。配置在 `application.yml` 的 `review.meta.*`，
+  不想跑可以设 `enabled: false`。
+- **图鉴里没有的英雄**（官网新出、本站还没补数据）也能复盘，只是显示成"英雄 #id"、没有打法建议。
 
 ## 一键更新流水线
 
@@ -258,7 +305,7 @@ bash sql/update_all.sh
 | 前端显示"加载失败/网络错误" | 后端没启动或端口不对 | 先单独打开 `http://localhost:8080/api/heroes` 验证后端 |
 | 列表页报 400，筛选条件是中文 | 中文参数没做 URL 编码 | 浏览器/axios 会自动编码；用 curl 手测时转成百分号编码（力量 = `%E5%8A%9B%E9%87%8F`） |
 | 下载依赖超时 / 卡住 | 访问 Maven 中央仓库慢 | 已内置阿里云镜像；若在 IDEA 里构建，需在 IDEA 的 Maven 设置里配镜像 |
-| `mvnw` 提示找不到 JAVA_HOME | JDK 未装或环境变量缺失 | 安装 JDK 17 并配置 JAVA_HOME |
+| `mvnw` 提示找不到 JAVA_HOME | JDK 未装或环境变量缺失 | 安装 JDK 21 并配置 JAVA_HOME |
 | PowerShell 提示"找不到命令 mvnw.cmd" | PowerShell 默认不从当前目录加载命令 | 命令前加 `.\` |
 | 8080 / 5173 端口被占用 | 其他程序占用了端口 | 改 application.yml 的 `server.port`；前端改 vite.config.js |
 | 页面中文乱码 | 字符集问题 | 数据库已用 utf8mb4；确保 IDE 文件编码为 UTF-8 |
@@ -278,7 +325,11 @@ node --test
 cd dota-guide-backend
 ./mvnw test
 
-# 前端单元测试（36 条，什么都不需要，纯函数）
+# 复盘模块 + 本地软件数据导入测试（13 条，不需要 MySQL 和网络）
+cd dota-guide-backend
+./mvnw test -Dtest=ReviewLogicTest,DesktopDataLoaderTest
+
+# 前端单元测试（43 条，什么都不需要，纯函数）
 cd dota-guide-frontend
 npm test
 ```

@@ -10,17 +10,16 @@ export default defineConfig({
 
   server: {
     // 开发服务器端口（Vite 默认就是 5173，显式写上更清晰）
-    port: 5173
+    port: 5173,
 
-    // 【备选方案】开发代理：如果不想让后端配置 CORS，可以打开下面的注释。
-    // 开启后，前端请求 /api/xxx 时 Vite 会转发到 http://localhost:8080/api/xxx，
-    // 浏览器只和 5173 通信，就不存在跨域问题了。
-    // 用代理时，src/api/hero.js 里的 baseURL 要改成 '/api'。
-    // proxy: {
-    //   '/api': {
-    //     target: 'http://localhost:8080',
-    //     changeOrigin: true
-    //   }
-    // }
+    // 开发代理：前端请求 /api/xxx 时 Vite 转发到 http://localhost:8080/api/xxx。
+    // 前端代码里统一写相对地址 /api，这样打包成本地软件后（前后端同一个端口、由后端托管页面）
+    // 不用改任何代码；开发时也不存在跨域问题。
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      }
+    }
   }
 })

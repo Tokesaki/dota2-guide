@@ -70,6 +70,9 @@ public class HeroQuery {
     /** 复杂度：精确匹配 complexity 列（1 简单 / 2 中等 / 3 困难） */
     private Integer complexity;
 
+    /** 打法标签：模糊匹配 hero_style.styles（打架/推进/带线/抓人/发育/保人） */
+    private String style;
+
     // ==================== 分页 ====================
     // 字段默认值就是「没传参数时」的取值，所以前端不传 page/size 也能正常工作。
 
@@ -119,6 +122,14 @@ public class HeroQuery {
 
     public void setComplexity(Integer complexity) {
         this.complexity = complexity;
+    }
+
+    public String getStyle() {
+        return style;
+    }
+
+    public void setStyle(String style) {
+        this.style = style;
     }
 
     public int getPage() {

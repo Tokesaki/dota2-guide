@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS hero_skill (
     -- 排序键：详情页按「某英雄 + 位次」取技能，这一个索引就全包了。
     -- 它最左前缀就是 hero_id，所以老的单列索引 idx_hero_id 是多余的（第十一阶段删掉）
     UNIQUE KEY uk_hero_order (hero_id, sort_order)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '英雄技能表（与 hero 一对多，795 条官网数据）';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '英雄技能表（与 hero 一对多，798 条官网数据）';
 
 -- 4. 插入 5 条示例数据（官网对齐格式：role 用官网定位、带主属性/攻击方式/复杂度/头像）
 --    列名不写 id：交给 AUTO_INCREMENT 自动生成 1、2、3...
