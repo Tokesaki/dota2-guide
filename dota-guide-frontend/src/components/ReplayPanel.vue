@@ -4,15 +4,19 @@
   显示：
     - 小地图：热力图（这个人活着时都待在哪）+ 死亡位置；或者"回放"模式，拖时间轴看 10 个英雄的走位
     - 各阶段在哪些区域花了多少时间、每分钟主要在哪、抱团率
-    - 每次死亡：时间、区域、身边队友 / 敌人数量，点一下跳到死前 10 秒的回放
+    - 每次死亡：时间、区域、身边队友 / 敌人数量、被谁用什么杀的、死前 5 秒吃了多少伤害、附近有没有对面的眼，
+      点一下跳到死前 10 秒的回放
+    - 眼位：双方每个眼插在哪、被拆没有
+    - 最上面"最该改的 3 件事"，下面团战 / 经济曲线 / 插眼（ReplayInsights.vue）
   地图是按坐标画的示意图（三条线、河道、两边基地），不是游戏里的小地图贴图。
 -->
 <script setup>
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
-import { Film, Play, Pause, Upload, RefreshCw, Flame, Skull } from 'lucide-vue-next'
+import { Film, Play, Pause, Upload, RefreshCw, Flame, Skull, Eye } from 'lucide-vue-next'
+import ReplayInsights from './ReplayInsights.vue'
 import { getReplay, startReplay, uploadReplay } from '../api/review'
 import { formatClock } from '../domain/review'
-import { ZONE_COLORS, toCanvas, findReplayPlayer, deathVerdict, zoneBars, frameIndexAt } from '../domain/replay'
+import { ZONE_COLORS, toCanvas, findReplayPlayer, deathVerdict, zoneBars, frameIndexAt, unitName, spellName } from '../domain/replay'
 
 const props = defineProps({
   matchId: { type: String, required: true },
@@ -23,7 +27,7 @@ const props = defineProps({
 const SIZE = 420
 const status = ref(null)
 const busy = ref(false)
-const mode = ref('heat')          // heat 热力图 / play 回放
+const mode = ref('heat')          // heat 热力图 / play 回放 / wards 眼位
 const frame = ref(0)
 const playing = ref(false)
 const canvas = ref(null)
@@ -32,6 +36,7 @@ let pollTimer = null
 let playTimer = null
 
 const result = computed(() => (status.value?.state === 'done' ? status.value.result : null))
+const v2 = computed(() => (result.value?.version || 1) >= 2)
 const meIndex = computed(() => findReplayPlayer(result.value, props.player))
 const me = computed(() => (meIndex.value >= 0 ? result.value.players[meIndex.value] : null))
 const trail = computed(() => result.value?.trail || [])
@@ -98,6 +103,7 @@ function draw() {
   const P = (x, y) => toCanvas(x, y, SIZE, r.mapMin, r.mapMax)
   drawMap(ctx, P)
   if (mode.value === 'heat') drawHeat(ctx, P, r)
+  else if (mode.value === 'wards') drawWards(ctx, P, r)
   else drawFrame(ctx, P, r)
 }
 
@@ -156,6 +162,41 @@ function drawHeat(ctx, P, r) {
   }
 }
 
+/** 眼位：己方实心、对面空心；黄 = 假眼，蓝 = 真眼；被拆的打红叉；自己插的加金边 */
+function drawWards(ctx, P, r) {
+  if (!me.value) return
+  for (const w of r.wards || []) {
+    const [x, y] = P(w.x, w.y)
+    const mine = w.team === me.value.team
+    const color = w.sentry ? '#4fc3d9' : '#f0d050'
+    ctx.beginPath()
+    ctx.arc(x, y, w.owner === meIndex.value ? 5.5 : 4, 0, Math.PI * 2)
+    ctx.globalAlpha = mine ? 0.9 : 0.6
+    if (mine) {
+      ctx.fillStyle = color
+      ctx.fill()
+    } else {
+      ctx.strokeStyle = color
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+    }
+    if (w.owner === meIndex.value) {
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+    }
+    if (w.killer) {
+      ctx.strokeStyle = '#ff4d4d'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y + 4)
+      ctx.moveTo(x + 4, y - 4); ctx.lineTo(x - 4, y + 4)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+  }
+}
+
 function drawFrame(ctx, P, r) {
   const f = trail.value[frame.value]
   if (!f) return
@@ -190,9 +231,17 @@ function togglePlay() {
 }
 
 function jumpToDeath(d) {
-  mode.value = 'play'
-  frame.value = frameIndexAt(trail.value, Math.max(0, d.t - 10))
+  seek(Math.max(0, d.t - 10))
 }
+
+function seek(t) {
+  mode.value = 'play'
+  frame.value = frameIndexAt(trail.value, t)
+  canvas.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+const slugs = computed(() => (result.value?.players || []).map((p) => p.slug))
+const who = (i, name) => unitName(name, i, names.value, slugs.value)
 
 const phaseRows = computed(() => (me.value?.phases || []).map((ph) => ({ ...ph, bars: zoneBars(ph.share) })))
 
@@ -224,11 +273,15 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearInterval(playTimer) })
 
     <template v-else-if="result">
       <p v-if="!me" class="muted">录像里没找到这名玩家（可能是观战位），在上面换一个人看看。</p>
-      <div v-else class="grid">
+      <p v-else-if="!v2" class="muted small">这是旧版解析结果，没有团战、死亡细节和经济曲线。点"重新解析"拿新版。
+        <button class="link" :disabled="busy" @click="start">重新解析</button></p>
+      <ReplayInsights v-if="me && v2" :result="result" :me-index="meIndex" :names="names" part="summary" />
+      <div v-if="me" class="grid">
         <div class="map-col">
           <div class="mode-tabs">
             <button :class="{ active: mode === 'heat' }" @click="mode = 'heat'"><Flame :size="13" />热力图</button>
             <button :class="{ active: mode === 'play' }" @click="mode = 'play'"><Play :size="13" />回放</button>
+            <button v-if="v2" :class="{ active: mode === 'wards' }" @click="mode = 'wards'"><Eye :size="13" />眼位</button>
           </div>
           <canvas ref="canvas" class="map" :style="{ width: SIZE + 'px', height: SIZE + 'px' }"></canvas>
           <div v-if="mode === 'play'" class="player-bar">
@@ -236,7 +289,8 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearInterval(playTimer) })
             <input v-model.number="frame" type="range" min="0" :max="trail.length - 1" />
             <span class="clock">{{ formatClock(currentT) }}</span>
           </div>
-          <p class="muted small">示意地图：绿色天辉、红色夜魇，金圈是你；热力图里红叉是死亡位置。区域按坐标估算。</p>
+          <p v-if="mode === 'wards'" class="muted small">黄 = 假眼，蓝 = 真眼；实心是己方、空心是对面，白边是你插的，红叉是被拆了。</p>
+          <p v-else class="muted small">示意地图：绿色天辉、红色夜魇，金圈是你；热力图里红叉是死亡位置。区域按坐标估算。</p>
         </div>
 
         <div class="stats-col">
@@ -265,14 +319,28 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearInterval(playTimer) })
           <h4><Skull :size="14" />死亡 {{ me.deaths.length }} 次</h4>
           <p v-if="!me.deaths.length" class="muted small">这场没死过。</p>
           <button v-for="(d, i) in me.deaths" :key="i" class="death" @click="jumpToDeath(d)">
-            <span class="clock">{{ formatClock(d.t) }}</span>
-            <span>{{ d.zone }}</span>
-            <span>队友 {{ d.allies }} · 敌人 {{ d.enemies }}</span>
-            <span class="tag" :class="deathVerdict(d).level">{{ deathVerdict(d).text }}</span>
+            <span class="death-head">
+              <span class="clock">{{ formatClock(d.t) }}</span>
+              <span>{{ d.zone }}</span>
+              <span>队友 {{ d.allies }} · 敌人 {{ d.enemies }}</span>
+              <span class="tag" :class="deathVerdict(d).level">{{ deathVerdict(d).text }}</span>
+              <span v-if="d.fight >= 0" class="tag">团战中</span>
+              <span v-if="d.enemyWards" class="tag bad">在对面假眼视野里</span>
+            </span>
+            <span v-if="d.killer" class="death-line">
+              被 <b>{{ who(d.killerIndex, d.killer) }}</b><template v-if="spellName(d.inflictor)">用「{{ spellName(d.inflictor) }}」</template>杀死，
+              死前 5 秒吃了 {{ d.damage }} 伤害
+            </span>
+            <span v-if="d.hits?.length" class="hits">
+              <span v-for="(h, k) in d.hits" :key="k">
+                {{ who(h.sourceIndex, h.source) }} {{ h.value }}<template v-if="spellName(h.inflictor)">（{{ spellName(h.inflictor) }}）</template>
+              </span>
+            </span>
           </button>
           <p v-if="me.deaths.length" class="muted small">点一条死亡记录，跳到死前 10 秒的回放。</p>
         </div>
       </div>
+      <ReplayInsights v-if="me && v2" :result="result" :me-index="meIndex" :names="names" part="detail" @seek="seek" />
     </template>
   </section>
 </template>
@@ -326,6 +394,12 @@ h4 { display: flex; align-items: center; gap: 6px; font-size: 14px; margin: 18px
   color: var(--text); cursor: pointer;
 }
 .death:hover { border-color: var(--gold); }
+.death { flex-direction: column; align-items: stretch; gap: 4px; }
+.death-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.death-line { font-size: 13px; }
+.death-line b { color: #e35548; font-weight: 600; }
+.hits { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
+.link { background: none; border: none; color: var(--gold); cursor: pointer; padding: 0 4px; text-decoration: underline; }
 .tag { font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--muted); color: var(--muted); }
 .tag.bad { border-color: #e35548; color: #e35548; }
 </style>

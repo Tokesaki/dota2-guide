@@ -19,6 +19,8 @@ import java.util.Map;
  *   - 每次死亡：死前最后一秒的位置、身边队友数、身边敌人数（不管看不看得见）
  *   - 回放轨迹：每 2 秒 10 个英雄的位置，给前端的小地图回放用
  *
+ * 团战、死亡细节（击杀者、死前伤害、对面视野）、经济曲线、插眼和"最该改的 3 件事"在 {@link ReplayInsights}。
+ *
  * 地图坐标：天辉基地在左下（约 -7000, -6600），夜魇在右上；河道大致是 x + y = 0 那条斜线，
  * 中路是 x = y 那条斜线。区域划分是按坐标粗略切的，图上标的是"估算"。
  */
@@ -33,7 +35,16 @@ public final class ReplayAnalysis {
     /** 区域代号，前端按这个顺序和颜色画 */
     public static final List<String> ZONES = List.of("上路", "中路", "下路", "己方野区", "敌方野区", "河道", "己方基地", "敌方高地");
 
-    public record Death(int t, int x, int y, String zone, int allies, int enemies) {
+    /**
+     * 一次阵亡。killer / inflictor 是内部名（npc_dota_hero_xxx、技能 key），killerIndex 是英雄下标（非英雄为 -1）；
+     * damage 死前 5 秒吃到的总伤害，hits 按来源分（最多 4 个）；enemyWards 附近对面假眼数；fight 属于第几场团战（-1 不是）
+     */
+    public record Death(int t, int x, int y, String zone, int allies, int enemies,
+                        String killer, int killerIndex, String inflictor, int damage,
+                        List<ReplayInsights.Hit> hits, int enemyWards, int fight) {
+        Death(int t, int x, int y, String zone, int allies, int enemies) {
+            this(t, x, y, zone, allies, enemies, null, -1, null, 0, List.of(), 0, -1);
+        }
     }
 
     public record PhaseZones(String label, int seconds, Map<String, Double> share) {
@@ -42,15 +53,21 @@ public final class ReplayAnalysis {
     public record PlayerAnalysis(int heroId, String slug, int team, Long accountId,
                                  Map<String, Double> zoneShare, List<PhaseZones> phases,
                                  List<String> minuteZones, double groupRate,
-                                 int[] heat, List<Death> deaths) {
+                                 int[] heat, List<Death> deaths,
+                                 String lane, int opponent, ReplayInsights.Econ econ,
+                                 List<ReplayInsights.SlowPeriod> slow, ReplayInsights.WardStats wards,
+                                 List<ReplayInsights.Issue> issues) {
     }
 
     /**
      * @param trail 每 2 秒一帧：[t, x0, y0, alive0, x1, y1, alive1, ...]（alive 为 1/0）
      */
     public record Result(int version, long matchId, int duration, int mapMin, int mapMax, int grid,
-                         List<String> zones, List<PlayerAnalysis> players, List<int[]> trail) {
+                         List<String> zones, List<PlayerAnalysis> players, List<int[]> trail,
+                         List<ReplayInsights.Fight> fights, List<ReplayInsights.WardInfo> wards) {
     }
+
+    public static final int VERSION = 2;
 
     private ReplayAnalysis() {
     }
@@ -59,9 +76,43 @@ public final class ReplayAnalysis {
         List<PlayerInfo> ps = raw.players();
         List<Sample> ss = raw.samples();
         int n = ps.size();
+        int duration = ss.isEmpty() ? 0 : Math.max(0, ss.get(ss.size() - 1).t());
+        List<String> slugs = new ArrayList<>();
+        int[] teams = new int[n];
+        for (int i = 0; i < n; i++) {
+            slugs.add(heroSlugs.get(ps.get(i).heroId()));
+            teams[i] = ps.get(i).team();
+        }
+        ReplayInsights in = new ReplayInsights(raw, slugs);
+        List<ReplayInsights.WardInfo> wards = in.wards();
+        List<ReplayInsights.Fight> fights = in.fights();
+
+        // 先算位置相关的，再补经济 / 对位 / 总结（对位要用到所有人的线和经济）
+        List<PlayerAnalysis> base = new ArrayList<>();
+        List<String> lanes = new ArrayList<>();
+        List<ReplayInsights.Econ> econ = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            PlayerAnalysis p = analyzePlayer(i, ps, ss, heroSlugs);
+            if (in.hasCombat()) {
+                p = withDeaths(p, in.deathsOf(i, fights, wards));
+            }
+            base.add(p);
+            lanes.add(ReplayInsights.laneOf(p.minuteZones()));
+            econ.add(in.econOf(i));
+        }
         List<PlayerAnalysis> out = new ArrayList<>();
         for (int i = 0; i < n; i++) {
-            out.add(analyzePlayer(i, ps, ss, heroSlugs));
+            PlayerAnalysis p = base.get(i);
+            int opp = in.opponentOf(i, lanes, econ);
+            List<ReplayInsights.SlowPeriod> slow = in.slowPeriods(i, econ.get(i), p.minuteZones());
+            ReplayInsights.WardStats ws = ReplayInsights.wardStats(i, wards, duration);
+            // 英雄中文名后端不知道，用 {h下标} 占位，前端换成名字
+            String oppName = opp < 0 ? "对位" : "{h" + opp + "}";
+            List<ReplayInsights.Issue> issues = ReplayInsights.issues(i, teams, fights, p.deaths(), econ.get(i),
+                    opp < 0 ? null : econ.get(opp), oppName, slow, ws);
+            out.add(new PlayerAnalysis(p.heroId(), p.slug(), p.team(), p.accountId(), p.zoneShare(), p.phases(),
+                    p.minuteZones(), p.groupRate(), p.heat(), p.deaths(),
+                    lanes.get(i), opp, econ.get(i), slow, ws, issues));
         }
         List<int[]> trail = new ArrayList<>();
         for (Sample s : ss) {
@@ -77,8 +128,12 @@ public final class ReplayAnalysis {
             }
             trail.add(f);
         }
-        int duration = ss.isEmpty() ? 0 : Math.max(0, ss.get(ss.size() - 1).t());
-        return new Result(1, matchId, duration, MAP_MIN, MAP_MAX, GRID, ZONES, out, trail);
+        return new Result(VERSION, matchId, duration, MAP_MIN, MAP_MAX, GRID, ZONES, out, trail, fights, wards);
+    }
+
+    private static PlayerAnalysis withDeaths(PlayerAnalysis p, List<Death> deaths) {
+        return new PlayerAnalysis(p.heroId(), p.slug(), p.team(), p.accountId(), p.zoneShare(), p.phases(),
+                p.minuteZones(), p.groupRate(), p.heat(), deaths, null, -1, null, List.of(), null, List.of());
     }
 
     private static PlayerAnalysis analyzePlayer(int i, List<PlayerInfo> ps, List<Sample> ss, Map<Integer, String> slugs) {
@@ -139,7 +194,8 @@ public final class ReplayAnalysis {
         }
         return new PlayerAnalysis(me.heroId(), slugs.get(me.heroId()), me.team(), me.accountId(),
                 shares(total, aliveSec), phases, minuteZones,
-                aliveSec == 0 ? 0 : (double) groupedSec / aliveSec, heat, deaths);
+                aliveSec == 0 ? 0 : (double) groupedSec / aliveSec, heat, deaths,
+                null, -1, null, List.of(), null, List.of());
     }
 
     private static Death deathAt(int i, List<PlayerInfo> ps, Sample s) {

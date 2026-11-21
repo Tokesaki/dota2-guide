@@ -30,14 +30,14 @@ import java.util.concurrent.Executors;
  * 下载慢，所以做成后台任务：前端点"开始解析"后每隔几秒查一次状态，完成后拿结果。
  * 一次只跑一个任务（单线程），避免同时下好几个大文件。
  *
- * 结果存在 od_cache（键 replay:v1:比赛编号），解析过的比赛下次直接出结果。
+ * 结果存在 od_cache（键 replay:v2:比赛编号），解析过的比赛下次直接出结果。
  * 从 Valve 下载或用户上传的录像解析完就删掉（一场 100 多 MB）；本机 Dota 文件夹里的录像不动。
  */
 @Service
 public class ReplayService {
 
     private static final Logger log = LoggerFactory.getLogger(ReplayService.class);
-    private static final String CACHE_PREFIX = "replay:v1:";
+    private static final String CACHE_PREFIX = "replay:v2:";
 
     /** state：none 没解析过 / running 进行中 / done 完成 / error 失败 */
     public record Status(String state, String message, ReplayAnalysis.Result result) {
