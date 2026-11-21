@@ -38,3 +38,20 @@ export function requestParse(matchId) {
 export function getHeroBuilds(key) {
   return request.get(`/heroes/${key}/builds`)
 }
+
+/** 录像深度解析的状态 / 结果：{ state: none|running|done|error, message, result } */
+export function getReplay(matchId) {
+  return request.get(`/matches/${matchId}/replay`)
+}
+
+/** 开始解析：后端先找本机 Dota 录像文件夹，没有就从 Valve 下载 */
+export function startReplay(matchId) {
+  return request.post(`/matches/${matchId}/replay`)
+}
+
+/** 手动上传 .dem（或 Valve 下载的 .dem.bz2）录像文件 */
+export function uploadReplay(matchId, file) {
+  const form = new FormData()
+  form.append('file', file)
+  return request.post(`/matches/${matchId}/replay/upload`, form, { timeout: 10 * 60 * 1000 })
+}

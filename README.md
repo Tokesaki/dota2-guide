@@ -21,7 +21,7 @@
 
 | 层 | 技术 | 版本 | 说明 |
 |---|---|---|---|
-| 后端 | Java | 17 | 已在本机验证 17.0.19 |
+| 后端 | Java | 21 | 录像解析库 clarity 需要 Java 21 |
 | 后端 | Spring Boot | 3.5.16 | Boot 3 系列最终稳定版 |
 | 后端 | MyBatis | 3.0.5 | 官方适配 Boot 3.5 的版本 |
 | 数据库 | MySQL | **5.7**（实测 5.7.23） | 本项目不用窗口函数等 8.0 特性，5.7 及以上都能跑 |
@@ -110,7 +110,7 @@ XM-01/
 
 | 软件 | 要求 | 检查命令 |
 |---|---|---|
-| JDK | 17 或更高 | `java -version` |
+| JDK | 21 或更高 | `java -version` |
 | Maven | **不需要安装**（项目自带 mvnw） | — |
 | MySQL | 5.7 或更高，已启动服务（本机实测 5.7.23） | 能连上 `localhost:3306` |
 | Node.js | 18+（22.11 已验证） | `node --version` |
@@ -305,7 +305,7 @@ bash sql/update_all.sh
 | 前端显示"加载失败/网络错误" | 后端没启动或端口不对 | 先单独打开 `http://localhost:8080/api/heroes` 验证后端 |
 | 列表页报 400，筛选条件是中文 | 中文参数没做 URL 编码 | 浏览器/axios 会自动编码；用 curl 手测时转成百分号编码（力量 = `%E5%8A%9B%E9%87%8F`） |
 | 下载依赖超时 / 卡住 | 访问 Maven 中央仓库慢 | 已内置阿里云镜像；若在 IDEA 里构建，需在 IDEA 的 Maven 设置里配镜像 |
-| `mvnw` 提示找不到 JAVA_HOME | JDK 未装或环境变量缺失 | 安装 JDK 17 并配置 JAVA_HOME |
+| `mvnw` 提示找不到 JAVA_HOME | JDK 未装或环境变量缺失 | 安装 JDK 21 并配置 JAVA_HOME |
 | PowerShell 提示"找不到命令 mvnw.cmd" | PowerShell 默认不从当前目录加载命令 | 命令前加 `.\` |
 | 8080 / 5173 端口被占用 | 其他程序占用了端口 | 改 application.yml 的 `server.port`；前端改 vite.config.js |
 | 页面中文乱码 | 字符集问题 | 数据库已用 utf8mb4；确保 IDE 文件编码为 UTF-8 |

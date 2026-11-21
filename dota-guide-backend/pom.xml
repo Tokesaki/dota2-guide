@@ -30,7 +30,7 @@
 
     <properties>
         <!-- 编译目标 Java 版本 -->
-        <java.version>17</java.version>
+        <java.version>21</java.version>
         <!-- 统一源码编码，保证中文注释和字符串不乱码 -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -61,6 +61,23 @@
 
         <!-- 3b. H2 内嵌数据库：只在"本地软件"模式（desktop profile）下使用，
              数据存在用户目录的一个文件里，不用另外安装 MySQL -->
+        <!-- 录像解析：clarity 读 Dota 2 的 .dem 录像（需要 Java 21） -->
+        <dependency>
+            <groupId>com.skadistats</groupId>
+            <artifactId>clarity</artifactId>
+            <version>5.0.1</version>
+        </dependency>
+        <!-- Valve 下载的录像是压缩包（以前是 bzip2，现在是 zstd），解压用 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.27.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <version>1.5.6-9</version>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

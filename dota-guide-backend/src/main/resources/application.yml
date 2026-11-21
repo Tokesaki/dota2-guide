@@ -9,6 +9,11 @@ server:
   port: 8080
 
 spring:
+  # 录像深度解析允许手动上传 .dem 录像，一场 100~200 MB
+  servlet:
+    multipart:
+      max-file-size: 600MB
+      max-request-size: 600MB
   datasource:
     # JDBC 连接串（jdbc:mysql://主机:端口/数据库名?参数1&参数2...）
     # 参数逐个解释：
@@ -63,6 +68,11 @@ review:
   patch:
     name: "7.42"
     start: 1794988800
+  # 录像深度解析：下载 / 上传的录像临时放在 work-dir，解析完就删；
+  # extra-dirs 可以额外指定放 .dem 录像的文件夹（逗号分隔），Steam 里的 Dota 录像文件夹会自动找
+  replay:
+    work-dir: ${user.home}/.dota2-review/replays
+    extra-dirs:
   meta:
     # 是否定时采集高分局出装样本
     enabled: true

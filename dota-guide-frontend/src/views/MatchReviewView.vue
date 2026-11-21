@@ -6,6 +6,7 @@
 -->
 <script setup>
 import { d2ptUrl } from '../domain/heroNamesEn'
+import ReplayPanel from '../components/ReplayPanel.vue'
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, CircleX, RefreshCw, Lightbulb, Package, BarChart3, BookOpen } from 'lucide-vue-next'
@@ -206,6 +207,9 @@ function dateText(ts) {
             </template>
             <p v-else class="muted small">高分局样本还不够（后端每小时自动采集一批），暂时没法做出装对比。</p>
           </div>
+
+          <!-- 录像深度解析：读 .dem 录像，看走位、区域时间、死亡局势 -->
+          <ReplayPanel class="wide" :match-id="props.matchId" :player="p" :players="data.players" />
 
           <!-- 图鉴打法 -->
           <div v-if="p.hero.tips" class="panel card wide">
